@@ -1,0 +1,7 @@
+node_modules
+dist
+.DS_Store
+*.log
+assets/fonts/*.woff2
+assets/fonts/*.ttf
+assets/fonts/*.woff
