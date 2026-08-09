@@ -84,9 +84,11 @@ export type LayoutType =
   | "poster"
   | "hero"
   | "infographic"
-  | "flowchart";
+  | "flowchart"
+  | "presentation"
+  | "split_diagram_text";
 
-export type ThemeId = "corporate" | "whiteboard" | "minimal" | "dark" | "glass" | "technical";
+export type ThemeId = "corporate" | "whiteboard" | "minimal" | "dark" | "glass" | "technical" | "codeatcloud";
 
 export type ConnectorStyle = "straight" | "curved" | "orthogonal" | "dashed" | "double";
 export type ArrowKind = "dependency" | "association" | "aggregation" | "composition" | "inheritance" | "implementation";
@@ -138,6 +140,33 @@ export interface BrandingConfig {
   watermark?: string;
 }
 
+export type EntranceType = "fade-in" | "fade-up" | "slide-left" | "slide-right" | "zoom-in" | "none";
+export type TransitionType = "fade" | "slide-left" | "slide-right" | "wipe-left" | "wipe-right" | "zoom";
+
+export interface SceneHighlight {
+  /** Component id (data-eid) to highlight. */
+  id: string;
+  /** Scene-relative second when the highlight appears. */
+  at: number;
+  /** Glow color override (defaults to theme accent). */
+  color?: string;
+  style?: "glow" | "ring";
+}
+
+/** Frame-accurate, narration-synced motion plan for a single scene. */
+export interface SceneAnimation {
+  entrance?: EntranceType;
+  /** Seconds between staggered element entrances. */
+  stagger?: number;
+  /** Reveal bullets/list items one-by-one synced to narration. */
+  bullets?: boolean;
+  highlights?: SceneHighlight[];
+  /** Thin progress bar under the scene that fills with narration. */
+  progress?: boolean;
+  /** Animate bar/line/pie/radar chart draw-in. */
+  drawCharts?: boolean;
+}
+
 export interface VisualSpec {
   title?: string;
   subtitle?: string;
@@ -150,7 +179,10 @@ export interface VisualSpec {
   containers: VisualContainer[];
   code?: CodeBlock;
   instructions?: string[];
+  content_blocks?: Array<{ heading: string; text: string }>;
   branding?: BrandingConfig;
+  /** Motion plan applied by the Remotion video layer (ignored by /render stills). */
+  animation?: SceneAnimation;
 }
 
 export interface RenderRequest {

@@ -202,6 +202,34 @@ export const THEMES: Record<string, Theme> = {
     ],
     shapeLine: ["#0b69ff", "#0c9d5c", "#e09e19", "#c4286c", "#5e46c9", "#c2372c", "#0c9d5c", "#7b8794", "#4c3db8", "#0d86a0"],
   },
+  codeatcloud: {
+    id: "codeatcloud",
+    name: "CodeAtCloud AI",
+    background: "#0A0F1C",
+    surface: "#121A2F",
+    surface2: "#1A243F",
+    text: "#FFFFFF",
+    muted: "#94a3b8",
+    primary: "#00E5FF",     // Cyber Blue
+    secondary: "#00E676",   // Neon Green
+    accent: "#D500F9",      // Electric Purple
+    border: "#1E293B",
+    shadow: "0 8px 32px rgba(0, 229, 255, 0.15)",
+    radius: 12,
+    spacing: 24,
+    font: fonts.sans,
+    fontHeading: fonts.heading,
+    fontCode: fonts.mono,
+    headingColor: "#FFEB3B", // Amber / Yellow
+    codeBg: "#050A14",
+    codeText: "#e2e8f0",
+    arrowColor: "#00E5FF",
+    palette: [
+      "#00E5FF22", "#00E67622", "#FFC40022", "#D500F922", "#FF174422",
+      "#00E5FF11", "#00E67611", "#FFC40011", "#D500F911", "#FF174411",
+    ],
+    shapeLine: ["#00E5FF", "#00E676", "#FFC400", "#D500F9", "#FF1744", "#00E5FF", "#00E676", "#FFC400", "#D500F9", "#FF1744"],
+  },
 };
 
 export function getTheme(id?: string): Theme {

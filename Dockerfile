@@ -1,25 +1,31 @@
 # Karma Visual Rendering Engine
 # Node + TypeScript + React (SSR markup) + ELK (graph layout) + Puppeteer (export)
+# + Remotion (video render, requires Chrome Headless Shell)
 
 FROM node:22-slim AS runner
 
 WORKDIR /app
 
-# Puppeteer needs shared libraries that are not present on slim images.
+# Puppeteer + Remotion need shared libraries that are not present on slim images.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       chromium \
-      fonts-liberation fonts-noto-cjk \
+      fonts-liberation fonts-noto-cjk fonts-dejavu-core \
       ca-certificates curl \
       libxss1 libnss3 libasound2 libatk-bridge2.0-0 libgtk-3-0 libgbm1 \
-      fonts-dejavu-core \
+      libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libcups2 \
+      libpango-1.0-0 libcairo2 \
  && rm -rf /var/lib/apt/lists/*
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+    CI=true
 
 COPY package.json package-lock.json* ./
 RUN npm install --no-audit --no-fund
+
+# Download Remotion's Chrome Headless Shell into node_modules/.remotion.
+RUN npx remotion browser ensure
 
 COPY tsconfig.json ./
 COPY src ./src

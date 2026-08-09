@@ -15,7 +15,7 @@ const componentSchema = z
     group: z.string().optional(),
     width: z.number().positive().optional(),
     height: z.number().positive().optional(),
-    data: z.record(z.unknown()).optional(),
+    data: z.record(z.string(), z.unknown()).optional(),
     items: z.array(z.union([z.string(), z.object({ label: z.string(), value: z.string().optional(), sublabel: z.string().optional(), icon: z.string().optional() })])).optional(),
     columns: z.array(z.object({ header: z.string().optional(), cells: z.array(z.string()).optional() })).optional(),
   })
@@ -64,7 +64,23 @@ const brandingSchema = z.object({
   watermark: z.string().optional(),
 });
 
-const specSchema = z.object({
+const highlightSchema = z.object({
+  id: z.string().min(1),
+  at: z.number().nonnegative().default(0),
+  color: z.string().optional(),
+  style: z.enum(["glow", "ring"]).optional(),
+});
+
+const animationSchema = z.object({
+  entrance: z.enum(["fade-in", "fade-up", "slide-left", "slide-right", "zoom-in", "none"]).optional(),
+  stagger: z.number().nonnegative().optional(),
+  bullets: z.boolean().optional(),
+  highlights: z.array(highlightSchema).optional(),
+  progress: z.boolean().optional(),
+  drawCharts: z.boolean().optional(),
+});
+
+export const specSchema = z.object({
   title: z.string().optional(),
   subtitle: z.string().optional(),
   layout: z.string().default("flow"),
@@ -76,7 +92,9 @@ const specSchema = z.object({
   containers: z.array(containerSchema).default([]),
   code: codeSchema.optional(),
   instructions: z.array(z.string()).optional(),
+  content_blocks: z.array(z.object({ heading: z.string(), text: z.string() })).optional(),
   branding: brandingSchema.optional(),
+  animation: animationSchema.optional(),
 });
 
 const renderRequestSchema = z.object({

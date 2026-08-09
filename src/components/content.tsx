@@ -81,7 +81,7 @@ function cardComponent(c: VisualComponent, ctx: ContentContext, index: number): 
         return `<div class="quote-text">${esc(quote)}</div>` + (author ? `<div class="quote-author">— ${esc(author)}</div>` : "");
       case "bullet":
         return `<div class="bullet-head">${headIcon}<span>${esc(label)}</span></div><ul class="bullet-list">` +
-          items.map((it) => `<li>${esc(it.label)}${it.sublabel ? `<span class="sub">${esc(it.sublabel)}</span>` : ""}</li>`).join("") + `</ul>`;
+          items.map((it, bi) => `<li data-bullet="${bi}">${esc(it.label)}${it.sublabel ? `<span class="sub">${esc(it.sublabel)}</span>` : ""}</li>`).join("") + `</ul>`;
       case "warning":
         return `<div class="warn-head">${iconMarkup("warning", 22, "#dc2626")}<span>${esc(label)}</span></div><div class="warn-body">${esc(c.data?.message ? String(c.data.message) : "")}</div>`;
       case "summary":
@@ -107,7 +107,7 @@ function cardComponent(c: VisualComponent, ctx: ContentContext, index: number): 
     }
   };
 
-  return `<div class="card card-${esc(kind)}" style="${paletteStyle(theme, index, c.fill, c.line)}border-radius:${theme.radius}px;box-shadow:${theme.shadow}">${body()}</div>`;
+  return `<div class="card card-${esc(kind)}" data-eid="${esc(c.id ?? "")}" data-order="${index}" data-type="card" style="${paletteStyle(theme, index, c.fill, c.line)}border-radius:${theme.radius}px;box-shadow:${theme.shadow}">${body()}</div>`;
 }
 
 // ---------------------------------------------------------------- containers
@@ -129,10 +129,10 @@ function containerComponent(c: VisualComponent, ctx: ContentContext, index: numb
     `border-radius:${theme.radius}px;box-shadow:${isShadow || isModern ? theme.shadow : "none"};backdrop-filter:${isGlass ? "blur(10px)" : "none"};`;
 
   return (
-    `<div class="container" style="${style}">` +
+    `<div class="container" data-eid="${esc(c.id ?? "")}" data-order="${index}" data-type="container" style="${style}">` +
     (label ? `<div class="container-label" style="color:${c.line ?? theme.primary}">${esc(label)}</div>` : "") +
     `<div class="container-items">` +
-    items.map((it) => `<div class="chip" style="border-color:${c.line ?? paletteFor(theme, index).line}">${it.icon ? iconMarkup(it.icon, 16, theme.text) : ""}${esc(it.label)}${it.value ? `<span class="chip-value">${esc(it.value)}</span>` : ""}</div>`).join("") +
+    items.map((it, bi) => `<div class="chip" data-bullet="${bi}" style="border-color:${c.line ?? paletteFor(theme, index).line}">${it.icon ? iconMarkup(it.icon, 16, theme.text) : ""}${esc(it.label)}${it.value ? `<span class="chip-value">${esc(it.value)}</span>` : ""}</div>`).join("") +
     `</div></div>`
   );
 }
@@ -146,13 +146,13 @@ function bannerComponent(c: VisualComponent, ctx: ContentContext, index: number)
   const tone = toneOf(c, index, theme, "yellow");
   const items = (c.items ?? []).map((it) => (typeof it === "string" ? { label: it } : it));
   return (
-    `<div class="banner" style="background:${tone.light};border:2px solid ${tone.border};border-radius:${theme.radius}px">` +
+    `<div class="banner" data-eid="${esc(c.id ?? "")}" data-order="${index}" data-type="banner" style="background:${tone.light};border:2px solid ${tone.border};border-radius:${theme.radius}px">` +
     `<span class="banner-icon" style="background:${tone.main};color:#fff">${iconSvg(c.icon ?? "lightbulb", 22)}</span>` +
     `<div class="banner-body">` +
     (label ? `<div class="banner-label">${esc(label)}</div>` : "") +
     (text ? `<div class="banner-text">${esc(text)}</div>` : "") +
     (items.length
-      ? `<ul class="banner-list">${items.map((it) => `<li>${esc(it.label)}${it.sublabel ? `<span class="sub">${esc(it.sublabel)}</span>` : ""}</li>`).join("")}</ul>`
+      ? `<ul class="banner-list">${items.map((it, bi) => `<li data-bullet="${bi}">${esc(it.label)}${it.sublabel ? `<span class="sub">${esc(it.sublabel)}</span>` : ""}</li>`).join("")}</ul>`
       : "") +
     `</div></div>`
   );
@@ -169,13 +169,13 @@ function pillCardComponent(c: VisualComponent, ctx: ContentContext, index: numbe
   const num = c.data?.num != null ? String(c.data.num) : "";
   const items = (c.items ?? []).map((it) => (typeof it === "string" ? { label: it } : it));
   return (
-    `<div class="pill-card" style="background:#fff;border:2px solid ${tone.border};border-radius:${theme.radius}px;box-shadow:${theme.shadow}">` +
+    `<div class="pill-card" data-eid="${esc(c.id ?? "")}" data-order="${index}" data-type="pill-card" style="background:#fff;border:2px solid ${tone.border};border-radius:${theme.radius}px;box-shadow:${theme.shadow}">` +
     `<div class="pill-badge" style="background:${tone.pillBg}">${num ? `<span class="pill-num">${esc(num)}</span>` : ""}<span>${esc(label)}</span></div>` +
     `<div class="pill-body">` +
     (sub ? `<div class="pill-sub">${esc(sub)}</div>` : "") +
     (body ? `<div class="pill-text">${esc(body)}</div>` : "") +
     (items.length
-      ? `<ul class="bullet-list">${items.map((it) => `<li>${esc(it.label)}${it.sublabel ? `<span class="sub">${esc(it.sublabel)}</span>` : ""}</li>`).join("")}</ul>`
+      ? `<ul class="bullet-list">${items.map((it, bi) => `<li data-bullet="${bi}">${esc(it.label)}${it.sublabel ? `<span class="sub">${esc(it.sublabel)}</span>` : ""}</li>`).join("")}</ul>`
       : "") +
     `</div></div>`
   );
@@ -190,9 +190,9 @@ function pillarComponent(c: VisualComponent, ctx: ContentContext, index: number)
   const tone = toneOf(c, index, theme, "blue");
   const header = `<div class="pillar-head" style="background:${tone.main}"><span class="num-circle">${c.data?.num ?? "1"}</span><span class="pillar-title">${esc(label)}</span></div>`;
   const content = items.length
-    ? `<div class="pillar-content"><ul class="bullet-list">${items.map((it) => `<li>${esc(it.label)}${it.sublabel ? `<span class="sub">${esc(it.sublabel)}</span>` : ""}</li>`).join("")}</ul></div>`
+    ? `<div class="pillar-content"><ul class="bullet-list">${items.map((it, bi) => `<li data-bullet="${bi}">${esc(it.label)}${it.sublabel ? `<span class="sub">${esc(it.sublabel)}</span>` : ""}</li>`).join("")}</ul></div>`
     : c.sublabel ? `<div class="pillar-content"><div class="pill-text">${esc(c.sublabel)}</div></div>` : "";
-  return `<div class="pillar" style="border:1px solid ${tone.border};border-radius:${theme.radius}px;background:#fff;box-shadow:${theme.shadow}">${header}${content}</div>`;
+  return `<div class="pillar" data-eid="${esc(c.id ?? "")}" data-order="${index}" data-type="pillar" style="border:1px solid ${tone.border};border-radius:${theme.radius}px;background:#fff;box-shadow:${theme.shadow}">${header}${content}</div>`;
 }
 
 // ---------------------------------------------------------------- timeline / roadmap
@@ -206,12 +206,12 @@ function timelineComponent(c: VisualComponent, ctx: ContentContext, index: numbe
     .map((it, i) => {
       const chip = `<div class="tl-node" style="background:${lineColor}"><span>${i + 1}</span></div>`;
       return (
-        `<div class="tl-item">${chip}<div class="tl-content"><div class="tl-label">${esc(it.label)}</div>${it.sublabel ? `<div class="tl-sub">${esc(it.sublabel)}</div>` : ""}</div></div>`
+        `<div class="tl-item" data-bullet="${i}">${chip}<div class="tl-content"><div class="tl-label">${esc(it.label)}</div>${it.sublabel ? `<div class="tl-sub">${esc(it.sublabel)}</div>` : ""}</div></div>`
       );
     })
     .join("");
   return (
-    `<div class="timeline ${horizontal ? "tl-horizontal" : "tl-vertical"}" style="--tl-line:${lineColor}">` +
+    `<div class="timeline ${horizontal ? "tl-horizontal" : "tl-vertical"}" data-eid="${esc(c.id ?? "")}" data-order="${index}" data-type="timeline" style="--tl-line:${lineColor}">` +
     (c.label ? `<div class="tl-title" style="color:${theme.headingColor}">${esc(c.label)}</div>` : "") +
     `<div class="tl-track">${nodes}</div></div>`
   );
@@ -219,7 +219,7 @@ function timelineComponent(c: VisualComponent, ctx: ContentContext, index: numbe
 
 // ---------------------------------------------------------------- charts
 
-function chartSvg(c: VisualComponent, ctx: ContentContext): string {
+function chartSvg(c: VisualComponent, ctx: ContentContext, index: number): string {
   const theme = ctx.theme;
   const data = c.data;
   const values: number[] = Array.isArray(data?.values) ? (data.values as number[]) : (c.items ?? []).map((_, i) => i + 1);
@@ -335,9 +335,9 @@ function chartSvg(c: VisualComponent, ctx: ContentContext): string {
     }
     const p = paletteFor(theme, 0);
     if (kind === "area") {
-      inner += `<polygon points="${linePts}${padL + cw},${padT + ch} ${padL},${padT + ch}" fill="${p.fill}" opacity="0.4"/>`;
+      inner += `<polygon data-chart-area="0" points="${linePts}${padL + cw},${padT + ch} ${padL},${padT + ch}" fill="${p.fill}" opacity="0.4"/>`;
     }
-    inner += `<polyline points="${linePts}" fill="none" stroke="${p.line}" stroke-width="3"/>`;
+    inner += `<polyline data-chart-line="0" points="${linePts}" fill="none" stroke="${p.line}" stroke-width="3"/>`;
     values.forEach((v, i) => {
       inner += `<circle cx="${px(i)}" cy="${py(v)}" r="4.5" fill="${theme.background}" stroke="${p.line}" stroke-width="2.5"/>`;
     });
@@ -359,7 +359,7 @@ function chartSvg(c: VisualComponent, ctx: ContentContext): string {
       const bh = (v / max) * ch;
       const by = padT + ch - bh;
       const p = paletteFor(theme, i);
-      inner += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="6" fill="${p.fill}" stroke="${p.line}" stroke-width="1.5"/>`;
+      inner += `<rect data-chart-bar="${i}" data-order="${i}" x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="6" fill="${p.fill}" stroke="${p.line}" stroke-width="1.5"/>`;
       inner += `<text x="${bx + bw / 2}" y="${by - 8}" text-anchor="middle" font-size="12" font-weight="600" fill="${theme.text}">${v}</text>`;
       inner += `<text x="${bx + bw / 2}" y="${padT + ch + 22}" text-anchor="middle" font-size="11" fill="${theme.muted}">${esc(labels[i] ?? "")}</text>`;
     });
@@ -369,12 +369,12 @@ function chartSvg(c: VisualComponent, ctx: ContentContext): string {
     (c.label && kind !== "pie" && kind !== "donut" && kind !== "gauge" && kind !== "progress" ? `<text x="${padL}" y="26" font-size="22" font-weight="700" fill="${theme.headingColor}">${esc(c.label)}</text>` : "") +
     inner +
     `</svg>`;
-  return `<div class="chart-wrap">${svg}</div>`;
+  return `<div class="chart-wrap" data-eid="${esc(c.id ?? "")}" data-order="${index}" data-type="chart" data-chart="1">${svg}</div>`;
 }
 
 // ---------------------------------------------------------------- tables
 
-function tableComponent(c: VisualComponent, ctx: ContentContext): string {
+function tableComponent(c: VisualComponent, ctx: ContentContext, index: number): string {
   const theme = ctx.theme;
   const cols = c.columns ?? [];
   const rows = (c.data?.rows as string[][]) ?? (c.items ?? []).map((it) => (typeof it === "string" ? [it] : [it.label]));
@@ -388,7 +388,7 @@ function tableComponent(c: VisualComponent, ctx: ContentContext): string {
     : "";
   const bodyHtml = `<tbody>` + bodyRows.map((r) => `<tr>${r.map((cell) => `<td>${esc(cell)}</td>`).join("")}</tr>`).join("") + `</tbody>`;
   return (
-    `<div class="table-wrap ${darkHeader ? "table-dark" : ""}" style="border-radius:${theme.radius}px;box-shadow:${theme.shadow}">` +
+    `<div class="table-wrap ${darkHeader ? "table-dark" : ""}" data-eid="${esc(c.id ?? "")}" data-order="${index}" data-type="table" style="border-radius:${theme.radius}px;box-shadow:${theme.shadow}">` +
     (c.label ? `<div class="table-title" style="color:${theme.headingColor}">${esc(c.label)}</div>` : "") +
     `<table class="data-table" style="--dt-head:${tone.main}">${headerHtml}${bodyHtml}</table></div>`
   );
@@ -400,7 +400,7 @@ export function codeComponent(code: { lang?: string; text: string }, ctx: Conten
   const theme = ctx.theme;
   const lang = code.lang ? `<span class="code-lang">${esc(code.lang)}</span>` : "";
   return (
-    `<div class="code-panel" style="background:${theme.codeBg};color:${theme.codeText};border-radius:${theme.radius}px">` +
+    `<div class="code-panel" data-type="code" style="background:${theme.codeBg};color:${theme.codeText};border-radius:${theme.radius}px">` +
     `<div class="code-head">${lang}<span class="code-dots"><span></span><span></span><span></span></span></div>` +
     `<pre><code>${esc(code.text)}</code></pre></div>`
   );
@@ -411,7 +411,7 @@ export function instructionsComponent(instructions: string[], ctx: ContentContex
   const items = instructions
     .map(
       (ins, i) =>
-        `<li><span class="num" style="background:${paletteFor(theme, i).line}">${i + 1}</span><span class="instr">${esc(ins)}</span></li>`,
+        `<li data-bullet="${i}"><span class="num" style="background:${paletteFor(theme, i).line}">${i + 1}</span><span class="instr">${esc(ins)}</span></li>`,
     )
     .join("");
   return `<ol class="instructions">${items}</ol>`;
@@ -433,9 +433,9 @@ export function renderContentScene(components: VisualComponent[], ctx: ContentCo
     } else if (t === "instructions") {
       sections.push(instructionsComponent((c.items ?? []).map((x) => (typeof x === "string" ? x : x.label)), ctx));
     } else if (t.endsWith("-chart") || t === "gauge" || t === "progress" || t === "pie" || t === "bar" || t === "line") {
-      sections.push(chartSvg(c, ctx));
+      sections.push(chartSvg(c, ctx, i));
     } else if (t.endsWith("-table") || t === "table") {
-      sections.push(tableComponent(c, ctx));
+      sections.push(tableComponent(c, ctx, i));
     } else if (t.includes("timeline") || t === "roadmap" || t === "learning-path" || t === "sprint") {
       sections.push(timelineComponent(c, ctx, i));
     } else if (t === "container" || t.includes("container") || t === "modern-card" || t === "minimal-card") {

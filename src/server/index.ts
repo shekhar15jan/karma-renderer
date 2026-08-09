@@ -7,6 +7,8 @@ import { buildDocument } from "../renderer/document";
 import { renderHtml, shutdownBrowser } from "../export/exporter";
 import { KNOWN_ICONS } from "../icons/icons";
 import { THEMES } from "../theme/themes";
+import { safeValidateVideoRequest } from "../video/video-schema";
+import { renderVideoBuffer } from "../video/render-video";
 
 const app = express();
 app.use(express.json({ limit: "50mb" }));
@@ -41,6 +43,28 @@ app.post("/render", async (req: Request, res: Response) => {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[render] failed:", msg);
     res.status(500).json({ success: false, error: "Render failed: " + msg });
+  }
+});
+
+app.post("/video", async (req: Request, res: Response) => {
+  const validated = safeValidateVideoRequest(req.body);
+  if (!validated.ok) {
+    res.status(400).json({ success: false, error: validated.error });
+    return;
+  }
+
+  try {
+    const result = await renderVideoBuffer(validated.data);
+    res.setHeader("Content-Type", "video/mp4");
+    res.setHeader("Content-Length", result.buffer.length);
+    res.setHeader("X-Karma-Renderer", "remotion-video-v1");
+    res.setHeader("X-Karma-Video-Fps", String(result.fps));
+    res.setHeader("X-Karma-Video-Duration", String(Math.round(result.durationInFrames / result.fps)));
+    res.send(result.buffer);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[video] render failed:", msg);
+    res.status(500).json({ success: false, error: "Video render failed: " + msg });
   }
 });
 

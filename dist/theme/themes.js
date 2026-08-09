@@ -5,9 +5,9 @@ exports.THEMES = void 0;
 exports.getTheme = getTheme;
 exports.paletteFor = paletteFor;
 const fonts = {
-    sans: "'Segoe UI', 'Inter', 'Helvetica Neue', Arial, sans-serif",
-    heading: "'Segoe UI', 'Inter', 'Poppins', 'Helvetica Neue', Arial, sans-serif",
-    mono: "'Cascadia Code', 'Consolas', 'Courier New', monospace",
+    sans: "'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif",
+    heading: "'Inter', 'Segoe UI', 'Poppins', 'Helvetica Neue', Arial, sans-serif",
+    mono: "'JetBrains Mono', 'Cascadia Code', 'Consolas', 'Courier New', monospace",
 };
 exports.THEMES = {
     whiteboard: {
@@ -42,16 +42,16 @@ exports.THEMES = {
     corporate: {
         id: "corporate",
         name: "Corporate",
-        background: "#ffffff",
-        surface: "#f8fafc",
+        background: "#f8fafc",
+        surface: "#ffffff",
         surface2: "#eef2f7",
         text: "#0f172a",
-        muted: "#64748b",
-        primary: "#0b5fa5",
-        secondary: "#0e9f6e",
-        accent: "#f59e0b",
-        border: "#cbd5e1",
-        shadow: "0 6px 20px rgba(15, 23, 42, 0.12)",
+        muted: "#475569",
+        primary: "#2563eb",
+        secondary: "#15803d",
+        accent: "#ca8a04",
+        border: "#e2e8f0",
+        shadow: "0 2px 6px rgba(15, 23, 42, 0.06)",
         radius: 8,
         spacing: 20,
         font: fonts.sans,
@@ -62,10 +62,10 @@ exports.THEMES = {
         codeText: "#e2e8f0",
         arrowColor: "#334155",
         palette: [
-            "#bfdbfe", "#bbf7d0", "#fde68a", "#fbcfe8", "#ddd6fe",
-            "#fecaca", "#a7f3d0", "#e2e8f0", "#c7d2fe", "#a5f3fc",
+            "#eff6ff", "#f0fdf4", "#fef2f2", "#fff7ed", "#faf5ff", "#fefce8",
+            "#e0e7ff", "#ecfeff", "#f8fafc", "#f1f5f9",
         ],
-        shapeLine: ["#1d4ed8", "#047857", "#b45309", "#be185d", "#6d28d9", "#b91c1c", "#047857", "#475569", "#5b21b6", "#0e7490"],
+        shapeLine: ["#2563eb", "#15803d", "#dc2626", "#ea580c", "#9333ea", "#ca8a04", "#3b82f6", "#0e7490", "#64748b", "#16a34a"],
     },
     minimal: {
         id: "minimal",
@@ -176,6 +176,34 @@ exports.THEMES = {
             "#ffc9c9", "#c2f0e0", "#e1e8ee", "#cfd4ff", "#bff0f5",
         ],
         shapeLine: ["#0b69ff", "#0c9d5c", "#e09e19", "#c4286c", "#5e46c9", "#c2372c", "#0c9d5c", "#7b8794", "#4c3db8", "#0d86a0"],
+    },
+    codeatcloud: {
+        id: "codeatcloud",
+        name: "CodeAtCloud AI",
+        background: "#0A0F1C",
+        surface: "#121A2F",
+        surface2: "#1A243F",
+        text: "#FFFFFF",
+        muted: "#94a3b8",
+        primary: "#00E5FF", // Cyber Blue
+        secondary: "#00E676", // Neon Green
+        accent: "#D500F9", // Electric Purple
+        border: "#1E293B",
+        shadow: "0 8px 32px rgba(0, 229, 255, 0.15)",
+        radius: 12,
+        spacing: 24,
+        font: fonts.sans,
+        fontHeading: fonts.heading,
+        fontCode: fonts.mono,
+        headingColor: "#FFEB3B", // Amber / Yellow
+        codeBg: "#050A14",
+        codeText: "#e2e8f0",
+        arrowColor: "#00E5FF",
+        palette: [
+            "#00E5FF22", "#00E67622", "#FFC40022", "#D500F922", "#FF174422",
+            "#00E5FF11", "#00E67611", "#FFC40011", "#D500F911", "#FF174411",
+        ],
+        shapeLine: ["#00E5FF", "#00E676", "#FFC400", "#D500F9", "#FF1744", "#00E5FF", "#00E676", "#FFC400", "#D500F9", "#FF1744"],
     },
 };
 function getTheme(id) {
