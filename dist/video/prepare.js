@@ -2,11 +2,9 @@
 /** Video prep - computes scene timeline + pre-renders each scene's visual HTML. */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.estimateSceneSeconds = estimateSceneSeconds;
-exports.buildSceneHtml = buildSceneHtml;
 exports.prepareVideo = prepareVideo;
 const media_utils_1 = require("@remotion/media-utils");
 const themes_1 = require("../theme/themes");
-const frame_1 = require("../renderer/frame");
 const MIN_SCENE_SECONDS = 2.5;
 const MAX_SCENE_SECONDS = 25;
 /** Heuristic narration seconds when a scene has no audio artifact. */
@@ -30,9 +28,6 @@ function estimateSceneSeconds(spec) {
 }
 /** Builds the scene visual frame through the SHARED frame builder so that
  *  video frames are pixel-identical to the /render stills. */
-async function buildSceneHtml(spec, width, height) {
-    return (0, frame_1.buildSceneFrame)(spec, { width, height });
-}
 function introFramesFor(video) {
     if (!video.enableIntro)
         return 0;
@@ -51,7 +46,6 @@ async function prepareVideo(video) {
     let cursor = introFrames;
     for (let i = 0; i < video.scenes.length; i++) {
         const scene = video.scenes[i];
-        const visualHtml = await buildSceneHtml(scene.visualSpec, width, height);
         const animation = scene.visualSpec.animation;
         const transition = scene.transition;
         let durationFrames;
@@ -62,9 +56,18 @@ async function prepareVideo(video) {
         else {
             durationFrames = Math.max(1, Math.round(estimateSceneSeconds(scene.visualSpec) * fps));
         }
-        scenes.push({ index: i, startFrame: cursor, durationFrames, audio: scene.audio, visualHtml, spec: scene.visualSpec, animation, transition });
+        const timelineEvents = scene.timelineEvents;
+        const captions = scene.captions;
+        scenes.push({ index: i, startFrame: cursor, durationFrames, audio: scene.audio, spec: scene.visualSpec, animation, transition, timelineEvents, captions });
         cursor += durationFrames;
     }
     const totalFrames = cursor + video.endPaddingFrames;
-    return { fps, width, height, introFrames, transition, totalFrames, scenes, music: video.music, musicVolume: video.musicVolume, theme };
+    const captionsConfig = video.captions ? {
+        burnIn: video.captions.burnIn ?? true,
+        preset: video.captions.preset ?? "youtube",
+        position: video.captions.position ?? 0.85,
+        fontSize: video.captions.fontSize ?? 28,
+        maxCharsPerLine: video.captions.maxCharsPerLine ?? 42,
+    } : undefined;
+    return { fps, width, height, introFrames, transition, totalFrames, endPaddingFrames: video.endPaddingFrames, scenes, music: video.music, musicVolume: video.musicVolume, theme, captions: captionsConfig, chapters: video.chapters };
 }

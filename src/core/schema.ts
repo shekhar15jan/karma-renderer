@@ -95,6 +95,9 @@ export const specSchema = z.object({
   content_blocks: z.array(z.object({ heading: z.string(), text: z.string() })).optional(),
   branding: brandingSchema.optional(),
   animation: animationSchema.optional(),
+  type: z.string().optional(),
+  dark_mode: z.boolean().optional(),
+  elements: z.array(z.record(z.string(), z.unknown())).optional(),
 });
 
 const renderRequestSchema = z.object({

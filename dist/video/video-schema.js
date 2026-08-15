@@ -11,6 +11,11 @@ const videoSpecSchema = schema_1.specSchema.extend({
     layout: zod_1.z.string().default("flow"),
     theme: zod_1.z.string().default("whiteboard"),
 });
+const captionCueSchema = zod_1.z.object({
+    start: zod_1.z.number(),
+    end: zod_1.z.number(),
+    text: zod_1.z.string(),
+});
 const sceneSchema = zod_1.z.object({
     /** Reuses the full visual_spec model (graph + content layouts). */
     visualSpec: videoSpecSchema,
@@ -18,6 +23,30 @@ const sceneSchema = zod_1.z.object({
     audio: dataUri.optional(),
     /** Transition used to enter this scene; overrides the video-level default. */
     transition: zod_1.z.enum(["fade", "slide-left", "slide-right", "wipe-left", "wipe-right", "zoom"]).optional(),
+    /** Audio markers for TTS emphasis and timing (ssml). */
+    ssmlAudioMarkers: zod_1.z.array(zod_1.z.object({
+        word: zod_1.z.string(),
+        effect: zod_1.z.string(),
+        duration: zod_1.z.string().optional()
+    })).optional(),
+    /** Triggers for visual transitions within the scene. */
+    visualTriggerCues: zod_1.z.array(zod_1.z.string()).optional(),
+    /** Timeline events for dynamic pans and zooms. */
+    timelineEvents: zod_1.z.array(zod_1.z.object({
+        timestamp_ms: zod_1.z.number(),
+        action: zod_1.z.string(),
+        target_element_id: zod_1.z.string().optional(),
+        zoom_start: zod_1.z.number().optional(),
+        zoom_end: zod_1.z.number().optional(),
+        duration_ms: zod_1.z.number().optional(),
+        transform_origin: zod_1.z.string().optional(),
+        pan_x_start: zod_1.z.number().optional(),
+        pan_x_end: zod_1.z.number().optional(),
+        pan_y_start: zod_1.z.number().optional(),
+        pan_y_end: zod_1.z.number().optional(),
+    })).optional(),
+    /** Per-scene captions (word-level or phrase-level). */
+    captions: zod_1.z.array(captionCueSchema).optional(),
 });
 exports.videoRequestSchema = zod_1.z.object({
     fps: zod_1.z.number().int().min(1).max(120).default(30),
@@ -46,6 +75,24 @@ exports.videoRequestSchema = zod_1.z.object({
     musicVolume: zod_1.z.number().min(0).max(1).default(0.2),
     /** Padding in frames added after the final scene. */
     endPaddingFrames: zod_1.z.number().int().min(0).max(300).default(20),
+    /** Caption settings. */
+    captions: zod_1.z.object({
+        /** Burn captions into video (true) or return SRT/VTT separately (false). */
+        burnIn: zod_1.z.boolean().default(true),
+        /** Caption style preset. */
+        preset: zod_1.z.enum(["youtube", "clean", "bold", "minimal"]).default("youtube"),
+        /** Vertical position: 0=top, 1=bottom. */
+        position: zod_1.z.number().min(0).max(1).default(0.85),
+        /** Font size in px (at 1080p). */
+        fontSize: zod_1.z.number().int().positive().default(28),
+        /** Max chars per line. */
+        maxCharsPerLine: zod_1.z.number().int().positive().default(42),
+    }).optional(),
+    /** Chapter markers for YouTube. */
+    chapters: zod_1.z.array(zod_1.z.object({
+        title: zod_1.z.string(),
+        startTime: zod_1.z.number(), // seconds from video start
+    })).optional(),
 });
 function validateVideoRequest(input) {
     return exports.videoRequestSchema.parse(input);

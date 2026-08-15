@@ -6,18 +6,41 @@ import type { ValidatedSpec } from "../core/schema";
 import type { ThemeId, LayoutType, VisualComponent, VisualConnection, SceneAnimation, TransitionType } from "../core/types";
 import type { Theme } from "../theme/themes";
 import { getTheme } from "../theme/themes";
-import { buildSceneFrame } from "../renderer/frame";
-import { isGraphLayout } from "../layout/layout";
+
+export interface CaptionCue {
+  start: number;
+  end: number;
+  text: string;
+}
 
 export interface PreparedScene {
   index: number;
   startFrame: number;
   durationFrames: number;
   audio?: string;
-  visualHtml: string;
   spec: ValidatedSpec;
   animation?: SceneAnimation;
   transition?: TransitionType;
+  timelineEvents?: Array<{
+    timestamp_ms: number;
+    action: string;
+    target_element_id?: string;
+    // Ken Burns properties
+    zoom_start?: number;
+    zoom_end?: number;
+    duration_ms?: number;
+    transform_origin?: string;
+    pan_x_start?: number;
+    pan_x_end?: number;
+    pan_y_start?: number;
+    pan_y_end?: number;
+  }>;
+  captions?: CaptionCue[];
+}
+
+export interface ChapterMarker {
+  title: string;
+  startTime: number;
 }
 
 export interface PreparedVideo {
@@ -27,10 +50,13 @@ export interface PreparedVideo {
   introFrames: number;
   transition: number;
   totalFrames: number;
+  endPaddingFrames: number;
   scenes: PreparedScene[];
   music?: string;
   musicVolume: number;
   theme: Theme;
+  captions?: { burnIn: boolean; preset: string; position: number; fontSize: number; maxCharsPerLine: number };
+  chapters?: ChapterMarker[];
 }
 
 const MIN_SCENE_SECONDS = 2.5;
@@ -54,9 +80,6 @@ export function estimateSceneSeconds(spec: ValidatedSpec): number {
 
 /** Builds the scene visual frame through the SHARED frame builder so that
  *  video frames are pixel-identical to the /render stills. */
-export async function buildSceneHtml(spec: ValidatedSpec, width: number, height: number): Promise<string> {
-  return buildSceneFrame(spec as never, { width, height, isForRemotion: true });
-}
 
 function introFramesFor(video: ValidatedVideoRequest): number {
   if (!video.enableIntro) return 0;
@@ -79,7 +102,6 @@ export async function prepareVideo(video: ValidatedVideoRequest): Promise<Prepar
 
   for (let i = 0; i < video.scenes.length; i++) {
     const scene = video.scenes[i];
-    const visualHtml = await buildSceneHtml(scene.visualSpec, width, height);
     const animation = (scene.visualSpec as never as { animation?: SceneAnimation }).animation;
     const transition = scene.transition;
 
@@ -91,10 +113,22 @@ export async function prepareVideo(video: ValidatedVideoRequest): Promise<Prepar
       durationFrames = Math.max(1, Math.round(estimateSceneSeconds(scene.visualSpec) * fps));
     }
 
-    scenes.push({ index: i, startFrame: cursor, durationFrames, audio: scene.audio, visualHtml, spec: scene.visualSpec, animation, transition });
+    const timelineEvents = scene.timelineEvents;
+    const captions = scene.captions;
+
+    scenes.push({ index: i, startFrame: cursor, durationFrames, audio: scene.audio, spec: scene.visualSpec, animation, transition, timelineEvents, captions });
     cursor += durationFrames;
   }
 
   const totalFrames = cursor + video.endPaddingFrames;
-  return { fps, width, height, introFrames, transition, totalFrames, scenes, music: video.music, musicVolume: video.musicVolume, theme };
+  
+  const captionsConfig = video.captions ? {
+    burnIn: video.captions.burnIn ?? true,
+    preset: video.captions.preset ?? "youtube",
+    position: video.captions.position ?? 0.85,
+    fontSize: video.captions.fontSize ?? 28,
+    maxCharsPerLine: video.captions.maxCharsPerLine ?? 42,
+  } : undefined;
+
+  return { fps, width, height, introFrames, transition, totalFrames, endPaddingFrames: video.endPaddingFrames, scenes, music: video.music, musicVolume: video.musicVolume, theme, captions: captionsConfig, chapters: video.chapters };
 }

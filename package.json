@@ -5,7 +5,7 @@
   "type": "commonjs",
   "description": "Karma OS Visual Rendering Engine - component-based HTML/SVG rendering via Puppeteer",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/copy-assets.js",
     "start": "node dist/server/index.js",
     "dev": "tsx src/server/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
@@ -17,8 +17,13 @@
     "@remotion/media-utils": "^4.0.507",
     "@remotion/paths": "^4.0.507",
     "@remotion/renderer": "^4.0.507",
+    "@remotion/tailwind": "^4.0.507",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/prismjs": "^1.26.6",
     "elkjs": "^0.9.3",
     "express": "^4.19.2",
+    "lightningcss": "^1.33.0",
+    "prismjs": "^1.30.0",
     "puppeteer": "^23.5.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -32,6 +37,9 @@
     "@types/puppeteer": "^7.0.4",
     "@types/react": "^18.3.10",
     "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.5.4",
+    "postcss": "^8.5.26",
+    "tailwindcss": "^3.4.1",
     "tsx": "^4.19.1",
     "typescript": "^5.6.2"
   }

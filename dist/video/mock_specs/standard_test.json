@@ -1,0 +1,31 @@
+{
+  "title": "Understanding Kubernetes",
+  "subtitle": "Core Concepts",
+  "layout": "standard-content",
+  "theme": "codeatcloud",
+  "components": [
+    {
+      "type": "heading",
+      "data": { "body": "What is Kubernetes?" }
+    },
+    {
+      "type": "paragraph",
+      "data": { "body": "Kubernetes (K8s) is an open-source system for automating deployment, scaling, and management of containerized applications. It groups containers that make up an application into logical units for easy management and discovery." }
+    },
+    {
+      "type": "bullet-list",
+      "data": {
+        "items": [
+          "Automated rollouts and rollbacks",
+          "Service discovery and load balancing",
+          "Storage orchestration",
+          "Secret and configuration management"
+        ]
+      }
+    },
+    {
+      "type": "paragraph",
+      "data": { "body": "By using Kubernetes, developers can focus on writing code rather than worrying about the underlying infrastructure." }
+    }
+  ]
+}

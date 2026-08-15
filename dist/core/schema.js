@@ -91,6 +91,9 @@ exports.specSchema = zod_1.z.object({
     content_blocks: zod_1.z.array(zod_1.z.object({ heading: zod_1.z.string(), text: zod_1.z.string() })).optional(),
     branding: brandingSchema.optional(),
     animation: animationSchema.optional(),
+    type: zod_1.z.string().optional(),
+    dark_mode: zod_1.z.boolean().optional(),
+    elements: zod_1.z.array(zod_1.z.record(zod_1.z.string(), zod_1.z.unknown())).optional(),
 });
 const renderRequestSchema = zod_1.z.object({
     spec: exports.specSchema,

@@ -29,7 +29,7 @@ RUN npx remotion browser ensure
 
 COPY tsconfig.json ./
 COPY src ./src
-RUN npx tsc -p tsconfig.json && npm prune --omit=dev --no-audit --no-fund
+RUN npx tsc -p tsconfig.json && cp -r src/styles dist/styles && npm prune --omit=dev --no-audit --no-fund
 
 EXPOSE 3000
 

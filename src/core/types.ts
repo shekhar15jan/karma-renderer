@@ -65,27 +65,45 @@ export type ComponentType =
   | "pricing-table"
   | "checklist"
   | "code"
-  | "instructions";
+  | "instructions"
+  | "split-layout"
+  | "architecture-pipeline";
 
 export type LayoutType =
+  // New V2 Layouts
+  | "title-slide"
+  | "section-header"
+  | "standard-content"
+  | "two-column"
+  | "split-image"
+  | "architecture-diagram"
+  | "feature-grid"
+  | "big-number"
+  | "comparison"
+  | "quote"
+  | "code-explainer"
+  | "terminal-walkthrough"
+  | "roadmap-timeline"
+  | "presentation"
+  // Legacy Graph Layouts
   | "flow"
+  | "flowchart"
   | "architecture"
   | "uml"
-  | "grid"
-  | "columns"
+  | "mindmap"
+  // Legacy Content Layouts
   | "cards"
   | "bento"
+  | "columns"
+  | "dashboard"
+  | "grid"
   | "timeline"
   | "roadmap"
   | "learning-path"
   | "sprint"
-  | "dashboard"
-  | "mindmap"
   | "poster"
-  | "hero"
   | "infographic"
-  | "flowchart"
-  | "presentation"
+  | "hero"
   | "split_diagram_text";
 
 export type ThemeId = "corporate" | "whiteboard" | "minimal" | "dark" | "glass" | "technical" | "codeatcloud";
@@ -141,7 +159,7 @@ export interface BrandingConfig {
 }
 
 export type EntranceType = "fade-in" | "fade-up" | "slide-left" | "slide-right" | "zoom-in" | "none";
-export type TransitionType = "fade" | "slide-left" | "slide-right" | "wipe-left" | "wipe-right" | "zoom";
+export type TransitionType = "fade" | "slide-left" | "slide-right" | "slide-up" | "slide-down" | "wipe-left" | "wipe-right" | "zoom" | "flip";
 
 export interface SceneHighlight {
   /** Component id (data-eid) to highlight. */

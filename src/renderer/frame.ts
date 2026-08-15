@@ -63,32 +63,7 @@ export async function buildSceneFrame(spec: VisualSpec, opts: FrameOptions): Pro
 
   let sceneHtml = "";
 
-  // If this is a presentation layout, we ONLY want the raw diagram SVG if rendering for Remotion React.
-  if (spec.layout === "presentation") {
-    if (opts.isForRemotion) {
-      return sceneHtml;
-    } else {
-      // Puppeteer Still-Image Fallback for presentation layout
-      const blocks = (spec as any).content_blocks || [];
-      const blocksHtml = blocks.map((b: any) => `
-        <div style="background: ${theme.surface}; border: 2px solid ${theme.border}; border-radius: ${theme.radius}px; padding: 24px; margin-bottom: 24px;">
-          <h3 style="margin: 0 0 12px 0; color: ${theme.headingColor}; font-size: 28px;">${b.heading}</h3>
-          <p style="margin: 0; color: ${theme.muted}; font-size: 24px;">${b.text}</p>
-        </div>
-      `).join("");
-
-      sceneHtml = `
-        <div style="display: flex; width: 100%; height: 100%;">
-          <div style="flex: 0 0 55%; display: flex; align-items: center; justify-content: center; overflow: hidden; transform: scale(0.9);">
-             ${sceneHtml}
-          </div>
-          <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; padding-left: 40px;">
-             ${blocksHtml}
-          </div>
-        </div>
-      `;
-    }
-  } else if (spec.layout === "split_diagram_text") {
+  if (spec.layout === "presentation" || spec.layout === "split_diagram_text") {
     sceneHtml = renderPresentationScene(spec, components, {
       theme,
       themeId: spec.theme as ThemeId,
