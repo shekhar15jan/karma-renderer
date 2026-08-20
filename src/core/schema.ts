@@ -83,7 +83,7 @@ const animationSchema = z.object({
 export const specSchema = z.object({
   title: z.string().optional(),
   subtitle: z.string().optional(),
-  layout: z.string().default("flow"),
+  layout: z.string().default("standard-content"),
   theme: z.string().default("whiteboard"),
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),

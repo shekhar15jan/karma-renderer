@@ -1,11 +1,25 @@
-import React from 'react';
-import { interpolate, useCurrentFrame, spring } from 'remotion';
+import React, { createContext, useContext } from 'react';
+import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 
 // ==========================================
 // Karma UI Design System (Bootstrap-style)
 // ==========================================
 
 const FPS = 30;
+
+/** Provides the active theme's lightness mode so tone widgets can pick readable text colors. */
+export const ThemeModeContext = createContext<'light' | 'dark'>('light');
+export const useThemeMode = () => useContext(ThemeModeContext);
+
+/**
+ * Viewport scale relative to the 1280x720 baseline the design system was tuned on.
+ * Higher resolutions (1920x1080) scale up fixed-px fonts (code, terminal, headers)
+ * so text stays readable on small screens instead of shrinking with the canvas.
+ */
+export const useViewportScale = () => {
+  const { height } = useVideoConfig();
+  return Math.max(1, height / 720);
+};
 
 // Base animation hook
 const useEntranceAnimation = (startFrame: number, duration: number = 15) => {
@@ -21,7 +35,7 @@ const useEntranceAnimation = (startFrame: number, duration: number = 15) => {
 export const KarmaHeading: React.FC<{ text: string, level?: 1 | 2 | 3 | 4, animationDelay?: number, className?: string }> = ({ text, level = 1, animationDelay = 0, className = "" }) => {
   const { opacity, y } = useEntranceAnimation(animationDelay);
 
-  const baseClasses = "font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-slate-100 to-slate-400 drop-shadow-md leading-tight";
+  const baseClasses = "font-extrabold tracking-tight text-[var(--scene-heading-color)] leading-tight";
   const sizeClasses = {
     1: "text-5xl lg:text-7xl",
     2: "text-4xl lg:text-5xl",
@@ -32,7 +46,7 @@ export const KarmaHeading: React.FC<{ text: string, level?: 1 | 2 | 3 | 4, anima
   const Tag = `h${level}` as keyof JSX.IntrinsicElements;
 
   return (
-    <Tag className={`${baseClasses} ${sizeClasses[level]} ${className}`} style={{ opacity, transform: `translateY(${y}px)` }}>
+    <Tag className={`${baseClasses} ${sizeClasses[level]} ${className}`} style={{ opacity, transform: `translateY(${y}px)`, fontFamily: "var(--scene-heading)" }}>
       {text}
     </Tag>
   );
@@ -41,7 +55,7 @@ export const KarmaHeading: React.FC<{ text: string, level?: 1 | 2 | 3 | 4, anima
 export const KarmaParagraph: React.FC<{ text: string, animationDelay?: number, className?: string }> = ({ text, animationDelay = 5, className = "" }) => {
   const { opacity } = useEntranceAnimation(animationDelay);
   return (
-    <p className={`text-xl lg:text-2xl text-slate-300 leading-relaxed font-medium tracking-wide ${className}`} style={{ opacity }}>
+    <p className={`text-xl lg:text-2xl text-[var(--scene-text)] opacity-90 leading-relaxed font-medium tracking-wide ${className}`} style={{ opacity, fontFamily: "var(--scene-font)" }}>
       {text}
     </p>
   );
@@ -49,22 +63,22 @@ export const KarmaParagraph: React.FC<{ text: string, animationDelay?: number, c
 
 export const KarmaText: React.FC<{ text: string, variant?: 'muted' | 'accent' | 'danger' | 'success', className?: string }> = ({ text, variant, className = "" }) => {
   const variants = {
-    muted: "text-slate-400",
-    accent: "text-indigo-400 font-semibold",
-    danger: "text-rose-400 font-semibold",
-    success: "text-emerald-400 font-semibold",
+    muted: "text-[var(--scene-muted)]",
+    accent: "text-[var(--scene-accent)] font-semibold",
+    danger: "text-rose-500 font-semibold",
+    success: "text-emerald-500 font-semibold",
   };
-  return <span className={`${variant ? variants[variant] : "text-slate-100"} ${className}`}>{text}</span>;
+  return <span className={`${variant ? variants[variant] : "text-[var(--scene-text)]"} ${className}`}>{text}</span>;
 };
 
 export const KarmaBulletList: React.FC<{ items: string[], animationDelay?: number, className?: string }> = ({ items, animationDelay = 5, className = "" }) => {
   return (
-    <ul className={`flex flex-col gap-4 text-xl lg:text-2xl text-slate-300 leading-relaxed font-medium tracking-wide ${className}`}>
+    <ul className={`flex flex-col gap-4 text-xl lg:text-2xl text-[var(--scene-text)] opacity-90 leading-relaxed font-medium tracking-wide ${className}`} style={{ fontFamily: "var(--scene-font)" }}>
       {items.map((item, idx) => {
         const { opacity, y } = useEntranceAnimation(animationDelay + (idx * 2));
         return (
           <li key={idx} className="flex items-start gap-4" style={{ opacity, transform: `translateY(${y}px)` }}>
-            <span className="text-indigo-500 font-bold mt-1">•</span>
+            <span className="text-[var(--scene-primary)] font-bold mt-1">•</span>
             <span>{item}</span>
           </li>
         );
@@ -80,12 +94,12 @@ export const KarmaContainer: React.FC<{ children: React.ReactNode, variant?: 'gl
 
   const variants = {
     transparent: "",
-    glass: "bg-slate-900/60 border border-slate-800 backdrop-blur-md shadow-xl",
-    solid: "bg-slate-900 border border-slate-800 shadow-2xl",
+    glass: "bg-[var(--scene-surface)]/70 border border-[var(--scene-border)] backdrop-blur-2xl shadow-[var(--scene-shadow)]",
+    solid: "bg-[var(--scene-surface)] border border-[var(--scene-border)] shadow-[var(--scene-shadow)]",
   };
 
   return (
-    <div className={`p-8 rounded-3xl ${variants[variant]} ${className}`} style={{ opacity, transform: `scale(${scale})` }}>
+    <div className={`p-8 rounded-[var(--scene-radius)] ${variants[variant]} ${className}`} style={{ opacity, transform: `scale(${scale})` }}>
       {children}
     </div>
   );
@@ -107,12 +121,20 @@ export const KarmaGrid: React.FC<{ children: React.ReactNode, cols?: 1 | 2 | 3 |
 };
 
 export const KarmaSplitLayout: React.FC<{ left: React.ReactNode, right: React.ReactNode, leftRatio?: 1 | 2 | 3 | 4, rightRatio?: 1 | 2 | 3 | 4, className?: string }> = ({ left, right, leftRatio = 1, rightRatio = 1, className = "" }) => {
+  const ratioClasses: Record<1 | 2 | 3 | 4, string> = {
+    1: "lg:flex-[1]",
+    2: "lg:flex-[2]",
+    3: "lg:flex-[3]",
+    4: "lg:flex-[4]",
+  };
+  const clampRatio = (r?: 1 | 2 | 3 | 4): 1 | 2 | 3 | 4 => (r === 1 || r === 2 || r === 3 || r === 4 ? r : 1);
+
   return (
     <div className={`w-full flex flex-col lg:flex-row gap-12 items-center justify-between ${className}`}>
-      <div className={`flex flex-col gap-6 w-full lg:w-[${leftRatio * 20}%] flex-[${leftRatio}]`}>
+      <div className={`flex flex-col gap-6 w-full lg:w-auto min-w-0 ${ratioClasses[clampRatio(leftRatio)]}`}>
         {left}
       </div>
-      <div className={`flex flex-col items-center justify-center w-full lg:w-[${rightRatio * 20}%] flex-[${rightRatio}]`}>
+      <div className={`flex flex-col items-center justify-center w-full lg:w-auto min-w-0 ${ratioClasses[clampRatio(rightRatio)]}`}>
         {right}
       </div>
     </div>
@@ -139,15 +161,16 @@ export const KarmaSlideHeader: React.FC<{ title?: string, subtitle?: string, ani
   const { opacity, y } = useEntranceAnimation(animationDelay);
   if (!title && !subtitle) return null;
   return (
-    <div className={`w-full pb-6 border-b-2 border-slate-700/50 mb-12 flex flex-col ${className}`} style={{ opacity, transform: `translateY(${y}px)` }}>
-      {title && <h2 className="text-4xl font-extrabold text-slate-100">{title}</h2>}
-      {subtitle && <p className="text-xl text-slate-400 mt-2 font-medium">{subtitle}</p>}
+    <div className={`w-full pb-6 border-b border-[var(--scene-border)] mb-12 flex flex-col ${className}`} style={{ opacity, transform: `translateY(${y}px)` }}>
+      {title && <h2 className="text-5xl font-extrabold text-[var(--scene-heading-color)]" style={{ fontFamily: "var(--scene-heading)" }}>{title}</h2>}
+      {subtitle && <p className="text-2xl text-[var(--scene-muted)] mt-4 font-medium" style={{ fontFamily: "var(--scene-font)" }}>{subtitle}</p>}
     </div>
   );
 };
 
 export const KarmaTerminalWindow: React.FC<{ commands: { text: string, type: 'command' | 'output' }[], animationDelay?: number, className?: string }> = ({ commands, animationDelay = 0, className = "" }) => {
   const { opacity, scale } = useEntranceAnimation(animationDelay);
+  const viewportScale = useViewportScale();
   const frame = useCurrentFrame();
   
   // Start typing slightly after the window scales in
@@ -160,11 +183,11 @@ export const KarmaTerminalWindow: React.FC<{ commands: { text: string, type: 'co
   let charsRendered = 0;
 
   return (
-    <div className={`w-full h-full bg-[#0a0a0a] border border-slate-800 rounded-xl flex flex-col overflow-hidden shadow-[0_0_40px_rgba(16,185,129,0.15)] ${className}`} style={{ opacity, transform: `scale(${scale})` }}>
-      <div className="bg-[#111] px-6 py-4 flex items-center justify-between border-b border-slate-800">
-        <div className="text-sm text-slate-500 font-mono">user@server:~</div>
+    <div className={`w-full h-full bg-[var(--scene-surface)]/80 border border-[var(--scene-border)] rounded-xl flex flex-col overflow-hidden shadow-[var(--scene-shadow)] backdrop-blur-2xl ${className}`} style={{ opacity, transform: `scale(${scale})` }}>
+      <div className="bg-[var(--scene-border)]/50 px-6 py-4 flex items-center justify-between border-b border-[var(--scene-border)]">
+        <div className="text-sm text-[var(--scene-muted)] font-mono">user@server:~</div>
       </div>
-      <div className="p-8 font-mono text-xl text-emerald-400 flex flex-col gap-4 overflow-y-auto">
+      <div className="p-8 font-mono text-[var(--scene-text)] flex flex-col gap-4 overflow-y-auto" style={{ fontSize: `${20 * viewportScale}px` }}>
         {commands.map((cmd, idx) => {
           const cmdLength = cmd.text.length;
           const charsForThisCmd = Math.max(0, Math.min(cmdLength, visibleChars - charsRendered));
@@ -176,14 +199,14 @@ export const KarmaTerminalWindow: React.FC<{ commands: { text: string, type: 'co
           if (charsForThisCmd === 0 && cmd.type === 'command') return null; // Don't show command line until ready
           
           return (
-            <div key={idx} className={cmd.type === 'output' ? 'text-slate-400' : ''}>
-              {cmd.type === 'command' && <><span className="text-rose-500 mr-2">➜</span><span className="text-sky-400 mr-2">~</span></>}
+            <div key={idx} className={cmd.type === 'output' ? 'text-[var(--scene-muted)] opacity-80' : ''}>
+              {cmd.type === 'command' && <><span className="text-[var(--scene-primary)] mr-2">➜</span><span className="text-[var(--scene-accent)] mr-2">~</span></>}
               {textToRender}
-              {cmd.type === 'command' && !isDone && charsForThisCmd > 0 && <span className="w-3 h-5 bg-emerald-400 inline-block align-middle ml-1"></span>}
+              {cmd.type === 'command' && !isDone && charsForThisCmd > 0 && <span className="w-3 h-5 bg-[var(--scene-primary)] inline-block align-middle ml-1"></span>}
             </div>
           );
         })}
-        {visibleChars >= charsRendered && <div><span className="text-rose-500 mr-2">➜</span><span className="text-sky-400 mr-2">~</span><span className="w-3 h-5 bg-emerald-400 inline-block animate-pulse align-middle ml-2"></span></div>}
+        {visibleChars >= charsRendered && <div><span className="text-[var(--scene-primary)] mr-2">➜</span><span className="text-[var(--scene-accent)] mr-2">~</span><span className="w-3 h-5 bg-[var(--scene-primary)] inline-block animate-pulse align-middle ml-2"></span></div>}
       </div>
     </div>
   );
@@ -194,7 +217,7 @@ export const KarmaRoadmapTimeline: React.FC<{ steps: { label: string, status: 'c
   
   return (
     <div className={`flex flex-row items-center justify-center w-full px-12 relative ${className}`} style={{ opacity, transform: `translateY(${y}px)` }}>
-      <div className="absolute left-12 right-12 top-1/2 h-2 bg-slate-800 -translate-y-1/2 rounded-full"></div>
+      <div className="absolute left-12 right-12 top-1/2 h-2 bg-[var(--scene-border)] -translate-y-1/2 rounded-full"></div>
       <div className="flex justify-between w-full relative z-10">
         {steps.map((step, idx) => {
           const isCompleted = step.status === 'completed';
@@ -203,16 +226,16 @@ export const KarmaRoadmapTimeline: React.FC<{ steps: { label: string, status: 'c
           return (
             <div key={idx} className="flex flex-col items-center gap-4">
               <div className={`w-16 h-16 rounded-full flex items-center justify-center border-4 z-10 ${
-                isCompleted ? 'bg-indigo-500 border-slate-900 shadow-[0_0_25px_rgba(99,102,241,0.6)]' :
-                isActive ? 'bg-slate-900 border-indigo-500 shadow-[0_0_25px_rgba(99,102,241,0.6)]' :
-                'bg-slate-800 border-slate-900'
+                isCompleted ? 'bg-[var(--scene-primary)] border-[var(--scene-surface)] shadow-lg' :
+                isActive ? 'bg-[var(--scene-surface)] border-[var(--scene-primary)] shadow-lg' :
+                'bg-[var(--scene-surface2)] border-[var(--scene-border)]'
               }`}>
                 {isCompleted && <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>}
               </div>
               <span className={`text-lg font-bold ${
-                isCompleted ? 'text-indigo-300' :
-                isActive ? 'text-white' :
-                'text-slate-500'
+                isCompleted ? 'text-[var(--scene-primary)]' :
+                isActive ? 'text-[var(--scene-text)]' :
+                'text-[var(--scene-muted)]'
               }`}>{step.label}</span>
             </div>
           );
@@ -226,29 +249,32 @@ export const KarmaRoadmapTimeline: React.FC<{ steps: { label: string, status: 'c
 
 export const KarmaCard: React.FC<{ children: React.ReactNode, color?: 'slate' | 'indigo' | 'emerald' | 'rose' | 'amber', animationDelay?: number, className?: string }> = ({ children, color = 'slate', animationDelay = 5, className = "" }) => {
   const { opacity, scale } = useEntranceAnimation(animationDelay);
+  const mode = useThemeMode();
 
+  // Theme-aware tone overrides: dark themes need light text on the translucent tint.
   const colors = {
-    slate: "from-slate-800/50 to-slate-900/50 border-slate-700",
-    indigo: "from-indigo-500/20 to-blue-500/10 border-indigo-500/50",
-    emerald: "from-emerald-500/20 to-teal-500/10 border-emerald-500/50",
-    rose: "from-rose-500/20 to-pink-500/10 border-rose-500/50",
-    amber: "from-amber-500/20 to-orange-500/10 border-amber-500/50",
+    slate: "bg-[var(--scene-surface)]/80 border-[var(--scene-border)] text-[var(--scene-text)]",
+    indigo: "bg-[var(--scene-primary)]/10 border-[var(--scene-primary)]/30 text-[var(--scene-primary)]",
+    emerald: mode === 'dark' ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-600",
+    rose: mode === 'dark' ? "bg-rose-500/10 border-rose-500/30 text-rose-300" : "bg-rose-500/10 border-rose-500/30 text-rose-600",
+    amber: mode === 'dark' ? "bg-amber-500/10 border-amber-500/30 text-amber-300" : "bg-amber-500/10 border-amber-500/30 text-amber-600",
   };
 
   return (
-    <div className={`relative p-8 rounded-3xl border bg-gradient-to-br shadow-xl backdrop-blur-md flex flex-col ${colors[color]} ${className}`} style={{ opacity, transform: `scale(${scale})` }}>
+    <div className={`relative p-8 rounded-[var(--scene-radius)] border backdrop-blur-2xl shadow-[var(--scene-shadow)] flex flex-col ${colors[color]} ${className}`} style={{ opacity, transform: `scale(${scale})` }}>
       {children}
     </div>
   );
 };
 
 export const KarmaBadge: React.FC<{ text: string, color?: 'slate' | 'indigo' | 'emerald' | 'rose' | 'amber', className?: string }> = ({ text, color = 'slate', className = "" }) => {
+  const mode = useThemeMode();
   const colors = {
-    slate: "bg-slate-500/20 text-slate-300 border-slate-500/30",
-    indigo: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30",
-    emerald: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-    rose: "bg-rose-500/20 text-rose-400 border-rose-500/30",
-    amber: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+    slate: mode === 'dark' ? "bg-slate-500/20 text-slate-300 border-slate-500/30" : "bg-slate-500/20 text-slate-600 border-slate-500/30",
+    indigo: mode === 'dark' ? "bg-indigo-500/20 text-indigo-400 border-indigo-500/30" : "bg-indigo-500/20 text-indigo-700 border-indigo-500/30",
+    emerald: mode === 'dark' ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" : "bg-emerald-500/20 text-emerald-700 border-emerald-500/30",
+    rose: mode === 'dark' ? "bg-rose-500/20 text-rose-400 border-rose-500/30" : "bg-rose-500/20 text-rose-700 border-rose-500/30",
+    amber: mode === 'dark' ? "bg-amber-500/20 text-amber-400 border-amber-500/30" : "bg-amber-500/20 text-amber-700 border-amber-500/30",
   };
 
   return (
@@ -262,6 +288,7 @@ export const KarmaBadge: React.FC<{ text: string, color?: 'slate' | 'indigo' | '
 
 export const KarmaCodeBlock: React.FC<{ code: string, language?: string, animationDelay?: number, className?: string }> = ({ code, language = "bash", animationDelay = 10, className = "" }) => {
   const { opacity, y } = useEntranceAnimation(animationDelay);
+  const viewportScale = useViewportScale();
 
   return (
     <div className={`rounded-2xl overflow-hidden shadow-2xl shadow-indigo-500/10 border border-slate-700 bg-[#1e1e1e]/95 backdrop-blur-md w-full flex flex-col ${className}`} style={{ opacity, transform: `translateY(${y}px)` }}>
@@ -269,9 +296,9 @@ export const KarmaCodeBlock: React.FC<{ code: string, language?: string, animati
         <div className="w-3.5 h-3.5 rounded-full bg-red-500"></div>
         <div className="w-3.5 h-3.5 rounded-full bg-yellow-500"></div>
         <div className="w-3.5 h-3.5 rounded-full bg-green-500"></div>
-        <span className="ml-6 text-sm text-slate-400 font-mono tracking-wider uppercase">{language}</span>
+        <span className="ml-6 text-sm text-slate-400 font-mono tracking-wider uppercase" style={{ fontSize: `${14 * viewportScale}px` }}>{language}</span>
       </div>
-      <pre className="p-8 text-lg font-mono text-emerald-300 overflow-hidden leading-relaxed">
+      <pre className="p-8 font-mono text-emerald-300 overflow-hidden leading-relaxed" style={{ fontSize: `${18 * viewportScale}px` }}>
         <code>{code}</code>
       </pre>
     </div>
@@ -847,3 +874,116 @@ export const KarmaConnector: React.FC<{
     </div>
   );
 };
+
+// --- New Widgets (Added for variety/data rendering) ---
+
+export const KarmaBarChart: React.FC<{ data: { label: string, value: number }[], max?: number, animationDelay?: number }> = ({ data, max, animationDelay = 5 }) => {
+  const { opacity, y } = useEntranceAnimation(animationDelay);
+  const maxValue = max || Math.max(...data.map(d => d.value));
+
+  return (
+    <div className="w-full h-full flex flex-col gap-3 justify-end pt-8" style={{ opacity, transform: `translateY(${y}px)` }}>
+      <div className="flex items-end justify-between h-64 gap-4 border-b-2 border-[var(--scene-border)] pb-2 relative">
+        {data.map((d, i) => {
+          const heightPct = (d.value / maxValue) * 100;
+          return (
+            <div key={i} className="flex flex-col items-center flex-1 gap-2 group">
+              <div className="text-xl font-bold opacity-0 group-hover:opacity-100 transition-opacity mb-1">{d.value}</div>
+              <div 
+                className="w-full bg-[var(--scene-primary)] rounded-t-sm shadow-[var(--scene-shadow)]" 
+                style={{ height: `${heightPct}%`, minHeight: '4px' }}
+              />
+              <div className="text-sm uppercase tracking-wider font-semibold opacity-80 mt-2 text-center whitespace-nowrap overflow-hidden text-ellipsis w-full px-1">{d.label}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+export const KarmaDonutChart: React.FC<{ data: { label: string, value: number, color?: string }[], animationDelay?: number }> = ({ data, animationDelay = 5 }) => {
+  const { opacity, scale } = useEntranceAnimation(animationDelay);
+  const total = data.reduce((sum, d) => sum + d.value, 0);
+  const defaultColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+  
+  let currentAngle = 0;
+  
+  return (
+    <div className="flex items-center justify-center gap-12 w-full h-full" style={{ opacity, transform: `scale(${scale})` }}>
+      <div className="relative w-64 h-64 shrink-0">
+        <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90 drop-shadow-xl">
+          {data.map((d, i) => {
+            const percentage = (d.value / total) * 100;
+            const dasharray = `${percentage} ${100 - percentage}`;
+            const offset = -currentAngle;
+            currentAngle += percentage;
+            
+            return (
+              <circle
+                key={i}
+                cx="50" cy="50" r="40"
+                fill="transparent"
+                stroke={d.color || defaultColors[i % defaultColors.length]}
+                strokeWidth="20"
+                strokeDasharray={dasharray}
+                strokeDashoffset={offset}
+                className="transition-all duration-1000 ease-out hover:stroke-[22px]"
+              />
+            );
+          })}
+        </svg>
+      </div>
+      <div className="flex flex-col gap-4">
+        {data.map((d, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <div className="w-4 h-4 rounded-full shadow-sm" style={{ backgroundColor: d.color || defaultColors[i % defaultColors.length] }}></div>
+            <div className="text-xl font-medium tracking-wide">
+              {d.label} <span className="opacity-50 ml-2">({Math.round((d.value/total)*100)}%)</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export const KarmaProgressBar: React.FC<{ label: string, progress: number, color?: string, animationDelay?: number }> = ({ label, progress, color, animationDelay = 5 }) => {
+  const { opacity, y } = useEntranceAnimation(animationDelay);
+  return (
+    <div className="w-full flex flex-col gap-2" style={{ opacity, transform: `translateY(${y}px)` }}>
+      <div className="flex justify-between items-end">
+        <span className="text-xl font-semibold tracking-wide">{label}</span>
+        <span className="text-xl font-bold opacity-80">{progress}%</span>
+      </div>
+      <div className="h-4 w-full bg-[var(--scene-surface)]/50 rounded-full overflow-hidden border border-[var(--scene-border)]">
+        <div 
+          className="h-full rounded-full shadow-lg" 
+          style={{ width: `${progress}%`, backgroundColor: color || 'var(--scene-primary)' }}
+        />
+      </div>
+    </div>
+  );
+};
+
+export const KarmaProfileCard: React.FC<{ name: string, role: string, avatarUrl?: string, animationDelay?: number }> = ({ name, role, avatarUrl, animationDelay = 5 }) => {
+  const { opacity, scale } = useEntranceAnimation(animationDelay);
+  return (
+    <div className="flex items-center gap-6 p-6 bg-[var(--scene-surface)]/60 rounded-[var(--scene-radius)] border border-[var(--scene-border)] shadow-[var(--scene-shadow)]" style={{ opacity, transform: `scale(${scale})` }}>
+      <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[var(--scene-primary)] shrink-0 shadow-inner bg-[var(--scene-surface)]">
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
+        ) : (
+          <svg className="w-full h-full text-[var(--scene-primary)] opacity-50 p-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+        )}
+      </div>
+      <div className="flex flex-col">
+        <div className="text-3xl font-bold tracking-tight text-[var(--scene-heading-color)] leading-none">{name}</div>
+        <div className="text-xl text-[var(--scene-primary)] font-semibold mt-2">{role}</div>
+      </div>
+    </div>
+  );
+};
+

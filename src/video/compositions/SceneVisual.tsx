@@ -22,10 +22,12 @@ function themeCssVars(theme: Theme): React.CSSProperties {
     "--scene-secondary": theme.secondary,
     "--scene-accent": theme.accent,
     "--scene-border": theme.border,
+    "--scene-shadow": theme.shadow,
     "--scene-radius": `${theme.radius}px`,
     "--scene-spacing": `${theme.spacing}px`,
     "--scene-font": theme.font,
     "--scene-heading": theme.fontHeading,
+    "--scene-heading-color": theme.headingColor,
     "--scene-code": theme.fontCode,
   } as React.CSSProperties;
 }
@@ -53,6 +55,10 @@ interface SceneVisualProps {
   animation?: SceneAnimation;
   /** Render an entrance zoom on the whole scene (kept for backwards compat). */
   entrance?: boolean;
+  /** "static" renders the scene as one stable, fully-fitted frame (no intra-scene motion). */
+  sceneMotion?: "animated" | "static";
+  /** Background overlay pattern: "grid" (dots grid), "dots" (dense dots), "plain" (none). */
+  backgroundPattern?: "grid" | "dots" | "plain";
   timelineEvents?: { timestamp_ms: number; action: string; target_element_id?: string; zoom_start?: number; zoom_end?: number; duration_ms?: number; transform_origin?: string; pan_x_start?: number; pan_x_end?: number; pan_y_start?: number; pan_y_end?: number }[];
   spec?: any;
 }
@@ -103,20 +109,48 @@ function buildSceneDomCache(root: HTMLElement, html: string, highlightIds: strin
   };
 }
 
-export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationFrames, fps, animation, entrance = true, timelineEvents, spec }) => {
+export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationFrames, fps, animation, entrance = true, sceneMotion = "animated", timelineEvents, spec, backgroundPattern }) => {
   const frame = useCurrentFrame();
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const fillRef = useRef<HTMLDivElement | null>(null);
   const cacheRef = useRef<SceneDomCache | null>(null);
+  const staticMode = sceneMotion === "static";
+  const pattern = backgroundPattern ?? (theme.gridBg ? "grid" : "plain");
   const anim = { ...DEFAULT_ANIMATION, ...animation } as Required<Pick<SceneAnimation, "entrance" | "stagger" | "bullets" | "progress" | "drawCharts">>;
   const highlights = animation?.highlights ?? [];
   const highlightIds = useMemo(() => highlights.map((h) => h.id), [highlights]);
 
   // Whole-scene entrance zoom (historical behaviour; disabled when per-element motion runs)
-  const zoom = interpolate(frame, [0, SCENE_ENTRANCE_FRAMES], [1.06, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const zoom = staticMode ? 1 : interpolate(frame, [0, SCENE_ENTRANCE_FRAMES], [1.06, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+
+  // Static mode: measure the content once and scale it down to fit the canvas if it
+  // overflows, so every scene is one stable slide fully inside the window.
+  const [fitScale, setFitScale] = React.useState(1);
+  React.useEffect(() => {
+    if (!staticMode) return;
+    const el = fillRef.current;
+    if (!el) return;
+    const measure = () => {
+      const cw = el.clientWidth;
+      const ch = el.clientHeight;
+      const sw = el.scrollWidth;
+      const sh = el.scrollHeight;
+      if (cw <= 0 || ch <= 0) return;
+      setFitScale(Math.min(1, cw / Math.max(1, sw), ch / Math.max(1, sh)));
+    };
+    measure();
+    const raf = requestAnimationFrame(() => measure());
+    const t = setTimeout(() => measure(), 300);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(t);
+    };
+  }, [staticMode, html, spec]);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
+    if (staticMode) return;
     if (!cacheRef.current || cacheRef.current.html !== html) {
       cacheRef.current = buildSceneDomCache(root, html ?? "", highlightIds);
     }
@@ -214,12 +248,12 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
     }
   }, [html]);
 
-const progressPct = anim.progress ? Math.min(100, (frame / Math.max(1, durationFrames)) * 100) : null;
+const progressPct = !staticMode && anim.progress ? Math.min(100, (frame / Math.max(1, durationFrames)) * 100) : null;
 
   // Compute dynamic transform from timelineEvents + Ken Burns
   let dynamicTransform = "";
   let transformOrigin = "center center";
-  if (timelineEvents && timelineEvents.length > 0) {
+  if (!staticMode && timelineEvents && timelineEvents.length > 0) {
     const tMs = (frame / fps) * 1000;
     for (const evt of timelineEvents) {
       if (tMs >= evt.timestamp_ms) {
@@ -264,7 +298,7 @@ const progressPct = anim.progress ? Math.min(100, (frame / Math.max(1, durationF
 
   // Default Ken Burns if no timeline events but scene is long enough (> 5s)
   const sceneDurationSec = durationFrames / fps;
-  if (!dynamicTransform && sceneDurationSec > 5) {
+  if (!staticMode && !dynamicTransform && sceneDurationSec > 5) {
     const zoomProgress = Math.min(1, frame / durationFrames);
     const zoom = 1.0 + 0.08 * easeOutCubic(zoomProgress); // Subtle 8% zoom
     const panX = -20 * easeOutCubic(zoomProgress); // Slight pan left
@@ -273,21 +307,30 @@ const progressPct = anim.progress ? Math.min(100, (frame / Math.max(1, durationF
     transformOrigin = "center center";
   }
 
-  const finalTransform = dynamicTransform ? dynamicTransform : `scale(${zoom})`;
+  const finalTransform = staticMode ? `scale(${fitScale})` : dynamicTransform ? dynamicTransform : `scale(${zoom})`;
 
   return (
     <AbsoluteFill style={{ background: theme.background, ...themeCssVars(theme) }}>
-      {theme.gridBg ? (
+      {pattern === "grid" ? (
         <AbsoluteFill
           style={{
             backgroundImage: `radial-gradient(circle, ${theme.border}66 1px, transparent 1px)`,
             backgroundSize: "36px 36px",
           }}
         />
+      ) : pattern === "dots" ? (
+        <AbsoluteFill
+          style={{
+            backgroundImage: `radial-gradient(circle, ${theme.border}44 1px, transparent 1px)`,
+            backgroundSize: "18px 18px",
+          }}
+        />
       ) : null}
-      <AbsoluteFill style={{ transform: finalTransform, transformOrigin, overflow: "hidden", transition: "transform 0.5s ease-out" }}>
+      <AbsoluteFill ref={fillRef} style={{ transform: finalTransform, transformOrigin: staticMode ? "center center" : transformOrigin, overflow: "hidden", transition: staticMode ? "none" : "transform 0.5s ease-out" }}>
         {spec ? (
-          <KarmaComponentRenderer spec={spec} />
+          <div ref={rootRef} className="scene-content" style={{ width: "100%", height: "100%" }}>
+            <KarmaComponentRenderer spec={spec} theme={theme} />
+          </div>
         ) : (
           <div
             ref={rootRef}

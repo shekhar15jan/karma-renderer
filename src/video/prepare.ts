@@ -47,6 +47,7 @@ export interface PreparedVideo {
   fps: number;
   width: number;
   height: number;
+  sceneMotion: "animated" | "static";
   introFrames: number;
   transition: number;
   totalFrames: number;
@@ -55,6 +56,7 @@ export interface PreparedVideo {
   music?: string;
   musicVolume: number;
   theme: Theme;
+  backgroundPattern: "grid" | "dots" | "plain";
   captions?: { burnIn: boolean; preset: string; position: number; fontSize: number; maxCharsPerLine: number };
   chapters?: ChapterMarker[];
 }
@@ -130,5 +132,5 @@ export async function prepareVideo(video: ValidatedVideoRequest): Promise<Prepar
     maxCharsPerLine: video.captions.maxCharsPerLine ?? 42,
   } : undefined;
 
-  return { fps, width, height, introFrames, transition, totalFrames, endPaddingFrames: video.endPaddingFrames, scenes, music: video.music, musicVolume: video.musicVolume, theme, captions: captionsConfig, chapters: video.chapters };
+  return { fps, width, height, sceneMotion: video.sceneMotion, introFrames, transition, totalFrames, endPaddingFrames: video.endPaddingFrames, scenes, music: video.music, musicVolume: video.musicVolume, theme, backgroundPattern: video.backgroundPattern, captions: captionsConfig, chapters: video.chapters };
 }

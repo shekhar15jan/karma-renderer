@@ -53,8 +53,42 @@ export function isContentLayout(layout: LayoutType): boolean {
 
 const elk = new ELK();
 
+/** Fixed render sizes for specialized node widgets (matches HtmlWidgets dimensions).
+ *  Used so ELK reserves the real space the widget occupies and nodes never overlap. */
+const FIXED_NODE_SIZES: Record<string, { width: number; height: number }> = {
+  "browser-node": { width: 256, height: 160 },
+  "message-queue": { width: 192, height: 64 },
+  "api-gateway": { width: 260, height: 56 },
+  "docker-node": { width: 160, height: 128 },
+  "kubernetes-node": { width: 224, height: 100 },
+  "logging-node": { width: 192, height: 128 },
+  "aws-node": { width: 192, height: 90 },
+  "azure-node": { width: 192, height: 90 },
+  "gcp-node": { width: 192, height: 90 },
+  "language-node": { width: 144, height: 60 },
+  "microservice-node": { width: 200, height: 120 },
+  "flow-terminal": { width: 130, height: 56 },
+  "flow-process": { width: 150, height: 60 },
+  "flow-io": { width: 150, height: 56 },
+  "flow-document": { width: 160, height: 112 },
+  "uml-class-node": { width: 210, height: 140 },
+  "uml-actor-node": { width: 128, height: 128 },
+  "uml-usecase-node": { width: 192, height: 128 },
+  "uml-decision": { width: 140, height: 60 },
+  "uml-component": { width: 192, height: 128 },
+  "uml-package": { width: 200, height: 120 },
+  "uml-database": { width: 128, height: 160 },
+  "uml-note": { width: 192, height: 80 },
+  "uml-cloud": { width: 160, height: 128 },
+  "uml-deployment": { width: 144, height: 160 },
+  "uml-interface": { width: 192, height: 120 },
+  "uml-syncbar": { width: 200, height: 60 },
+};
+
 /** Sizing heuristics for un-sized nodes. */
 export function estimateNodeSize(c: VisualComponent): { width: number; height: number } {
+  const fixed = c.type ? FIXED_NODE_SIZES[c.type] : undefined;
+  if (fixed) return fixed;
   const icon = c.icon ? 40 : 0;
   const label = c.label ?? "";
   const chars = Math.max(label.length, c.sublabel ? c.sublabel.length : 0);
@@ -88,7 +122,9 @@ function groupComponents(
   return { groups, ungrouped, containersByIndex };
 }
 
-/** ELK layered layout for graph diagrams. Returns absolute positions (1920x1080 frame). */
+/** ELK layered layout for graph diagrams. Returns absolute positions for a frame of
+ *  frameW x frameH. `padding` is the margin kept around the diagram inside the frame;
+ *  the diagram is centered in the remaining area. */
 export async function layoutGraph(
   components: VisualComponent[],
   connections: VisualConnection[],
@@ -97,6 +133,7 @@ export async function layoutGraph(
   frameH: number,
   direction: "DOWN" | "RIGHT" | "LEFT" | "UP" = "DOWN",
   mode: "layered" | "box" | "stress" = "layered",
+  padding?: { top: number; left: number; right: number; bottom: number },
 ): Promise<GraphLayoutResult> {
   const byId = new Map(components.map((c) => [c.id, c]));
   const { groups, ungrouped, containersByIndex } = groupComponents(components, containers ?? []);
@@ -235,7 +272,7 @@ export async function layoutGraph(
   const contentW = maxX - minX;
   const contentH = maxY - minY;
   let offsetX = 0, offsetY = 0;
-  const extraPadding = { top: 150, left: 80, right: 80, bottom: 120 };
+  const extraPadding = padding ?? { top: 150, left: 80, right: 80, bottom: 120 };
   const availW = frameW - extraPadding.left - extraPadding.right;
   const availH = frameH - extraPadding.top - extraPadding.bottom;
   if (contentW < availW) offsetX = extraPadding.left + (availW - contentW) / 2 - minX;
