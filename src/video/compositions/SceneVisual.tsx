@@ -189,7 +189,8 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
       }
     });
 
-    // --- highlights ---------------------------------------------------------------
+    // --- highlights + auto micro-animations (Refinements 2-3) ---------------------
+    // Primary highlights from script
     for (const h of highlights) {
       const target = cache.highlightTargets.get(h.id);
       if (!target) continue;
@@ -202,10 +203,26 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
           target.style.outlineOffset = "3px";
         }
         target.style.zIndex = "3";
+        // Subtle scale pulse at highlight moment (Refinement 3)
+        const pulseT = Math.min(1, (t - h.at) / 0.6);
+        if (pulseT < 1) {
+          const scale = 1 + 0.04 * (1 - pulseT) * Math.sin(pulseT * Math.PI * 3);
+          target.style.transform = `scale(${scale})`;
+        }
+      }
+    }
+    // Auto micro-animations every 3-6s when no explicit highlight (Refinement 3)
+    if (highlights.length === 0 && durationFrames / fps > 8 && t > 3) {
+      const autoInterval = 4; // seconds
+      const idx = Math.floor(t / autoInterval) % Math.max(1, cache.elements.length);
+      const autoEl = cache.elements[idx];
+      if (autoEl && t % autoInterval < 0.6) {
+        const p = (t % autoInterval) / 0.6;
+        autoEl.style.boxShadow = `0 0 0 ${4 * (1-p)}px ${theme.primary}22`;
       }
     }
 
-    // --- chart draw-in --------------------------------------------------------------
+    // --- chart draw-in + progressive diagram (Refinement 4) -----------------------
     if (anim.drawCharts) {
       const { bars } = cache;
       const line = cache.line;
@@ -237,6 +254,41 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
           area.style.opacity = String(0.4 * k);
         }
       }
+    }
+    // Progressive connection reveal (Refinement 4) — animate arrows sequentially
+    const svgConnections = root.querySelectorAll<SVGPathElement | SVGLineElement>("svg [data-connection]");
+    svgConnections.forEach((conn, idx) => {
+      const appearAt = 1.2 + idx * 0.5; // stagger connections 0.5s apart
+      const el = conn as unknown as HTMLElement;
+      if (t < appearAt) {
+        el.style.opacity = "0";
+      } else {
+        const p = Math.min(1, (t - appearAt) / 0.4);
+        el.style.opacity = String(easeOutCubic(p));
+        if (conn instanceof SVGPathElement || conn instanceof SVGLineElement) {
+          const len = (conn as unknown as SVGGeometryElement).getTotalLength?.() ?? 200;
+          el.style.strokeDasharray = `${len}`;
+          el.style.strokeDashoffset = String(len * (1 - easeOutCubic(p)));
+        }
+      }
+    });
+    // Code line highlight sync (Refinement 5) — highlight exact line being explained
+    const codeLines = root.querySelectorAll<HTMLElement>("[data-code-line], .token-line, pre code span");
+    if (codeLines.length > 0 && highlights.length > 0) {
+      // Map highlights that target code to line numbers if id contains line number
+      highlights.forEach((h) => {
+        if (h.id.includes("code") || h.id.includes("line")) {
+          const lineNum = parseInt(h.id.replace(/\D/g, ""), 10);
+          if (!isNaN(lineNum) && t >= h.at && t < h.at + 2.5) {
+            const targetLine = root.querySelector<HTMLElement>(`[data-line="${lineNum}"]`) || codeLines[lineNum - 1] as HTMLElement;
+            if (targetLine) {
+              targetLine.style.background = "rgba(79, 110, 247, 0.35)";
+              targetLine.style.borderLeft = `3px solid ${h.color ?? "#4f6ef7"}`;
+              targetLine.style.paddingLeft = "8px";
+            }
+          }
+        }
+      });
     }
 
     // --- branding is part of the frame HTML (unchanged) -----------------------------

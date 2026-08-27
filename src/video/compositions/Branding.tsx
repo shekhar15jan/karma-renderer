@@ -11,19 +11,21 @@ const POSITIONS: Record<NonNullable<BrandingConfig["logoPosition"]>, React.CSSPr
   center: { top: "50%", left: "50%", transform: "translate(-50%, -50%)" },
 };
 
-const renderLogoContent = (logo: string, theme: Theme) =>
+  const renderLogoContent = (logo: string, theme: Theme) =>
   logo.startsWith("data:") || logo.includes("/") ? (
-    <img src={logo} style={{ width: "120px" }} />
+    <img src={logo} style={{ width: "80px", opacity: 0.85 }} />
   ) : (
     <div
       style={{
         background: `linear-gradient(45deg, ${theme.primary}, ${theme.accent})`,
         WebkitBackgroundClip: "text",
         WebkitTextFillColor: "transparent",
-        fontSize: "32px",
+        fontSize: "22px",
         fontWeight: 800,
         fontFamily: theme.fontHeading,
-        textShadow: `0 0 20px ${theme.primary}55`,
+        textShadow: `0 0 12px ${theme.primary}33`,
+        opacity: 0.9,
+        letterSpacing: 1,
       }}
     >
       {logo}

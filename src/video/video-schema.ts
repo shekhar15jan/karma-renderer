@@ -141,6 +141,7 @@ export function sanitizeVideoRequest(input: unknown): unknown {
   if (!input || typeof input !== "object") return input;
   const req = input as { scenes?: Array<{ visualSpec?: any }> };
   if (!Array.isArray(req.scenes)) return input;
+  const HIGHLIGHT_STYLES = new Set(["glow", "ring"]);
   for (const scene of req.scenes) {
     const spec = scene?.visualSpec;
     if (!spec || typeof spec !== "object") continue;
@@ -158,6 +159,27 @@ export function sanitizeVideoRequest(input: unknown): unknown {
           if (typeof comp[f] === "string" && !HEX_COLOR.test(comp[f])) delete comp[f];
         }
       }
+    }
+    // animation.highlights[].style must be glow|ring — coerce invalid to glow
+    if (spec.animation && typeof spec.animation === "object" && Array.isArray(spec.animation.highlights)) {
+      for (const h of spec.animation.highlights) {
+        if (!h || typeof h !== "object") continue;
+        if (typeof h.style === "string" && !HIGHLIGHT_STYLES.has(h.style.toLowerCase())) {
+          h.style = "glow";
+        } else if (typeof h.style === "string") {
+          h.style = h.style.toLowerCase();
+        } else if (h.style !== undefined && h.style !== null && typeof h.style !== "string") {
+          delete h.style;
+        }
+      }
+    }
+    // code must be object or undefined — null 400s zod
+    if (spec.code === null) {
+      delete spec.code;
+    } else if (spec.code !== undefined && typeof spec.code !== "object") {
+      delete spec.code;
+    } else if (spec.code && typeof spec.code === "object" && spec.code.text === null) {
+      spec.code.text = "";
     }
   }
   return input;

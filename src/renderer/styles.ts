@@ -26,8 +26,8 @@ body {
 }
 .page { position:relative; width:100%; height:100%; display:flex; flex-direction:column; padding:var(--spacing); }
 .title-band { padding: 14px var(--spacing) 6px; text-align:center; }
-.title-main { font-size:40px; font-weight:900; color:var(--heading); font-family:var(--heading); text-transform:uppercase; letter-spacing:0.5px; }
-.title-sub { font-size:22px; color:var(--muted); margin-top:6px; font-weight:500; }
+.title-main { font-size:48px; font-weight:900; color:var(--heading); font-family:var(--heading); text-transform:uppercase; letter-spacing:0.5px; line-height:1.1; }
+.title-sub { font-size:26px; color:var(--muted); margin-top:8px; font-weight:600; }
 .scene-wrap { flex:1; position:relative; min-height:0; }
 .scene-svg { position:absolute; inset:0; }
 
@@ -160,7 +160,9 @@ body {
 .code-lang { font-family:var(--code); font-size:12px; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.5px; }
 .code-dots span { display:inline-block; width:9px; height:9px; border-radius:50%; background:#f87171; margin-left:4px; }
 .code-dots span:nth-child(2){ background:#fbbf24; } .code-dots span:nth-child(3){ background:#34d399; }
-.code-panel pre { flex:1; padding:12px 14px; overflow:hidden; font-family:var(--code); font-size:15px; line-height:1.45; white-space:pre-wrap; word-break:break-word; }
+.code-panel pre { flex:1; padding:16px 18px; overflow:hidden; font-family:var(--code); font-size:18px; line-height:1.6; white-space:pre-wrap; word-break:break-word; letter-spacing:0.2px; }
+/* Refinement 5: code line highlight — large enough for mobile */
+.code-panel pre [data-line] { padding:2px 8px; border-radius:4px; transition: background 0.3s ease; }
 
 .instructions { list-style:none; display:flex; flex-direction:column; gap:8px; padding:8px 4px; }
 .instructions li { display:flex; align-items:center; gap:12px; font-size:17px; }

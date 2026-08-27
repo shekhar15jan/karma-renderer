@@ -61,7 +61,7 @@ export interface PreparedVideo {
   chapters?: ChapterMarker[];
 }
 
-const MIN_SCENE_SECONDS = 2.5;
+const MIN_SCENE_SECONDS = 10;
 const MAX_SCENE_SECONDS = 25;
 
 /** Heuristic narration seconds when a scene has no audio artifact. */
