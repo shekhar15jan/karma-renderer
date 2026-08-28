@@ -333,6 +333,19 @@ const isTitleOrSubtitleDuplicate = (c: any, spec: any): boolean => {
 };
 
 const KarmaComponentRendererInner: React.FC<{ spec: any, animationDelayOverride?: number, theme?: Theme }> = ({ spec, animationDelayOverride, theme }) => {
+  // V2 production wiring: schemaVersion v2 with semantic fields → KarmaV2Scene (TRAVEL + FOLLOW) for first vertical slice
+  // This is checked before any V1 layout branching to ensure V2 is actually exercised
+  if ((spec as any).schemaVersion === 'v2' && ((spec as any).semanticObjects || (spec as any).semanticAnimations || (spec as any).visualIntent)) {
+    const { KarmaV2Scene } = require("./KarmaV2Scene");
+    return (
+      <div className="w-full h-full flex flex-col z-10 relative">
+        <KarmaSlideHeader title={spec.title} subtitle={spec.subtitle} />
+        <div className="flex-grow w-full relative min-h-0 overflow-hidden">
+          <KarmaV2Scene spec={spec as any} />
+        </div>
+      </div>
+    );
+  }
   const layout = normalizeVideoLayout(spec.layout);
   const components = (spec.components || []).filter((c: any) => !isTitleOrSubtitleDuplicate(c, spec));
 
@@ -448,6 +461,35 @@ const KarmaComponentRendererInner: React.FC<{ spec: any, animationDelayOverride?
   // Graph layouts (flow/uml/architecture + the video "architecture-diagram") use the
   // shared ELK engine: absolute coordinates for nodes + real arrow rendering.
   if (GRAPH_VIDEO_LAYOUTS.has(layout)) {
+    // Slice 2/3 semantic simulations: if intent is SIMULATION/PROCESS + KAFKA, render dedicated simulation
+    const intent = (spec as any).intent ?? (spec as any).visualIntent;
+    const hasKafka = (spec.components ?? []).some((c:any) => (c.type ?? "").toLowerCase().includes("kafka") || (c.label ?? "").toLowerCase().includes("kafka"))
+                   || JSON.stringify(spec).toLowerCase().includes("kafka");
+    const isSimulation = intent === "SIMULATION" || intent === "PROCESS" || hasKafka;
+    // For kafka intent, prefer KafkaSimulation; otherwise use ELK graph (covers REQUEST_FLOW with TRAVEL animations via SemanticScene)
+    if (isSimulation && hasKafka) {
+      const { KafkaSimulation } = require("../simulations/KafkaSimulation");
+      return (
+        <div className="w-full h-full flex flex-col z-10 relative">
+          <KarmaSlideHeader title={spec.title} subtitle={spec.subtitle} />
+          <div className="flex-grow w-full flex items-center justify-center p-8">
+            <KafkaSimulation />
+          </div>
+        </div>
+      );
+    }
+    // V2 production path: schemaVersion v2 or semantic fields → KarmaV2Scene (TRAVEL + FOLLOW)
+    if ((spec as any).schemaVersion === 'v2' || (spec as any).semanticObjects || (spec as any).semanticAnimations || (spec as any).camera || (spec as any).visualIntent) {
+      const { KarmaV2Scene } = require("./KarmaV2Scene");
+      return (
+        <div className="w-full h-full flex flex-col z-10 relative">
+          <KarmaSlideHeader title={spec.title} subtitle={spec.subtitle} />
+          <div className="flex-grow w-full relative min-h-0 overflow-hidden">
+            <KarmaV2Scene spec={spec as any} />
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="w-full h-full flex flex-col z-10 relative">
         <KarmaSlideHeader title={spec.title} subtitle={spec.subtitle} />

@@ -8,6 +8,8 @@ import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 import type { Theme } from "../../theme/themes";
 import type { SceneAnimation } from "../../core/types";
 import { KarmaComponentRenderer } from "./KarmaComponentRenderer";
+import { cameraTransform } from "../camera/cameraEngine";
+import type { CameraIntent } from "../schema/semanticSceneSpec";
 
 const SCENE_ENTRANCE_FRAMES = 18;
 
@@ -61,6 +63,8 @@ interface SceneVisualProps {
   backgroundPattern?: "grid" | "dots" | "plain";
   timelineEvents?: { timestamp_ms: number; action: string; target_element_id?: string; zoom_start?: number; zoom_end?: number; duration_ms?: number; transform_origin?: string; pan_x_start?: number; pan_x_end?: number; pan_y_start?: number; pan_y_end?: number }[];
   spec?: any;
+  /** Semantic camera intent (Slice 6) — drives viewport transform via cameraEngine. */
+  camera?: CameraIntent;
 }
 
 const DEFAULT_ANIMATION: Required<Pick<SceneAnimation, "entrance" | "stagger" | "bullets" | "progress" | "drawCharts">> = {
@@ -109,7 +113,7 @@ function buildSceneDomCache(root: HTMLElement, html: string, highlightIds: strin
   };
 }
 
-export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationFrames, fps, animation, entrance = true, sceneMotion = "animated", timelineEvents, spec, backgroundPattern }) => {
+export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationFrames, fps, animation, entrance = true, sceneMotion = "animated", timelineEvents, spec, backgroundPattern, camera }) => {
   const frame = useCurrentFrame();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const fillRef = useRef<HTMLDivElement | null>(null);
@@ -122,6 +126,15 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
 
   // Whole-scene entrance zoom (historical behaviour; disabled when per-element motion runs)
   const zoom = staticMode ? 1 : interpolate(frame, [0, SCENE_ENTRANCE_FRAMES], [1.06, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+
+  // Semantic camera (Slice 6): viewport-relative, safe-framed, Easing.out cubic.
+  // Resolves spec.camera or explicit camera prop via cameraEngine.
+  const semanticCamera: CameraIntent | undefined = camera ?? (spec as any)?.camera;
+  const camTransform = useMemo(() => {
+    if (staticMode) return { scale: 1, x: 0, y: 0 };
+    if (!semanticCamera) return null;
+    return cameraTransform(frame, fps, durationFrames, semanticCamera);
+  }, [frame, fps, durationFrames, semanticCamera, staticMode]);
 
   // Static mode: measure the content once and scale it down to fit the canvas if it
   // overflows, so every scene is one stable slide fully inside the window.
@@ -300,12 +313,19 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
     }
   }, [html]);
 
-const progressPct = !staticMode && anim.progress ? Math.min(100, (frame / Math.max(1, durationFrames)) * 100) : null;
+  // V2 quality: hide debug progress bar for V2 semantic scenes (thin magenta line)
+  const isV2Scene = !!(spec as any)?.schemaVersion || !!(spec as any)?.visualIntent || !!(spec as any)?.semanticObjects;
+  const progressPct = !staticMode && anim.progress && !isV2Scene ? Math.min(100, (frame / Math.max(1, durationFrames)) * 100) : null;
 
-  // Compute dynamic transform from timelineEvents + Ken Burns
+  // Compute dynamic transform from timelineEvents + Ken Burns (legacy Stack A)
+  // Semantic camera (Slice 6) takes precedence when present — viewport-relative, Easing.out cubic, safe framing.
   let dynamicTransform = "";
   let transformOrigin = "center center";
-  if (!staticMode && timelineEvents && timelineEvents.length > 0) {
+  let semanticTransformCss: string | null = null;
+  if (camTransform) {
+    semanticTransformCss = `scale(${camTransform.scale.toFixed(4)}) translate(${camTransform.x.toFixed(1)}px, ${camTransform.y.toFixed(1)}px)`;
+    transformOrigin = "center center";
+  } else if (!staticMode && timelineEvents && timelineEvents.length > 0) {
     const tMs = (frame / fps) * 1000;
     for (const evt of timelineEvents) {
       if (tMs >= evt.timestamp_ms) {
@@ -348,9 +368,9 @@ const progressPct = !staticMode && anim.progress ? Math.min(100, (frame / Math.m
     }
   }
 
-  // Default Ken Burns if no timeline events but scene is long enough (> 5s)
+  // Default Ken Burns if no semantic camera, no timeline events but scene is long enough (> 5s)
   const sceneDurationSec = durationFrames / fps;
-  if (!staticMode && !dynamicTransform && sceneDurationSec > 5) {
+  if (!staticMode && !dynamicTransform && !semanticTransformCss && sceneDurationSec > 5) {
     const zoomProgress = Math.min(1, frame / durationFrames);
     const zoom = 1.0 + 0.08 * easeOutCubic(zoomProgress); // Subtle 8% zoom
     const panX = -20 * easeOutCubic(zoomProgress); // Slight pan left
@@ -359,7 +379,13 @@ const progressPct = !staticMode && anim.progress ? Math.min(100, (frame / Math.m
     transformOrigin = "center center";
   }
 
-  const finalTransform = staticMode ? `scale(${fitScale})` : dynamicTransform ? dynamicTransform : `scale(${zoom})`;
+  const finalTransform = staticMode
+    ? `scale(${fitScale})`
+    : semanticTransformCss
+      ? semanticTransformCss
+      : dynamicTransform
+        ? dynamicTransform
+        : `scale(${zoom})`;
 
   return (
     <AbsoluteFill style={{ background: theme.background, ...themeCssVars(theme) }}>

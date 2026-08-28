@@ -142,10 +142,25 @@ const allCues = (scenes: PreparedScene[], fps: number): CaptionCue[] => {
   return cues;
 };
 
+import { hydrate } from "../objects/objectRegistry";
+
 export const KarmaVideo: React.FC<KarmaVideoProps> = ({ video, prepared }) => {
   if (!prepared) return null;
   const p = prepared;
   const theme = p.theme;
+  // Slice 5: Hydrate object registry across all scenes for continuity (§12)
+  useMemo(() => {
+    const registry: Record<string, any> = {};
+    for (const s of p.scenes) {
+      const objs = (s.spec as any)?.semanticObjects ?? (s.spec as any)?.objects ?? [];
+      for (const o of objs) {
+        if (o?.id && !registry[o.id]) registry[o.id] = { type: o.type ?? "SERVICE", visualIdentity: o.visualIdentity ?? `${String(o.type ?? "service").toLowerCase()}-01` };
+      }
+      const reg = (s.spec as any)?.registry;
+      if (reg) Object.assign(registry, reg);
+    }
+    hydrate(registry);
+  }, [p.scenes]);
 
   const cues = allCues(p.scenes, p.fps);
   

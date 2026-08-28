@@ -98,7 +98,20 @@ export const specSchema = z.object({
   type: z.string().optional(),
   dark_mode: z.boolean().optional(),
   elements: z.array(z.record(z.string(), z.unknown())).optional(),
-});
+  // V2 semantic extensions (backward compatible, stripped if not present)
+  schemaVersion: z.string().optional(),
+  visualIntent: z.string().optional(),
+  intent: z.string().optional(),
+  sceneId: z.string().optional(),
+  visual_spec_v2: z.record(z.string(), z.unknown()).optional(),
+  semanticObjects: z.array(z.record(z.string(), z.unknown())).optional(),
+  semanticAnimations: z.array(z.record(z.string(), z.unknown())).optional(),
+  camera: z.record(z.string(), z.unknown()).optional(),
+  transitionIntent: z.string().optional(),
+  assetClass: z.string().optional(),
+  narration: z.record(z.string(), z.unknown()).optional(),
+  duration: z.number().optional(),
+}).passthrough();
 
 const renderRequestSchema = z.object({
   spec: specSchema,
