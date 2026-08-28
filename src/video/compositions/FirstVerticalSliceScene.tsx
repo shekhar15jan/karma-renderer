@@ -44,18 +44,17 @@ export const FirstVerticalSliceScene: React.FC = () => {
   const gatewayHighlight = t >= 6.5;
 
   return (
-    <div style={{ width: "100%", height: "100%", background: "#f8fafc", overflow: "hidden", position: "relative", fontFamily: "Inter, system-ui, sans-serif" }}>
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(900px 500px at 18% 22%, rgba(99,102,241,0.06), transparent), radial-gradient(700px 400px at 82% 78%, rgba(14,165,233,0.05), transparent)" }} />
-      <div style={{ position: "absolute", inset: 0, opacity: 0.035, backgroundImage: "radial-gradient(circle at 1px 1px, #0f172a 1px, transparent 0)", backgroundSize: "26px 26px" }} />
+    <div style={{ width: "100%", height: "100%", background: "#0B0F17", overflow: "hidden", position: "relative", fontFamily: "Inter, system-ui, sans-serif" }}>
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(900px 500px at 18% 22%, rgba(6,182,212,0.05), transparent), radial-gradient(700px 400px at 82% 78%, rgba(139,92,246,0.05), transparent)" }} />
+      <div style={{ position: "absolute", inset: 0, opacity: 0.2, backgroundImage: "radial-gradient(circle at 1px 1px, #64748B 1px, transparent 0)", backgroundSize: "26px 26px" }} />
       <div
         style={{
           position: "absolute",
-          inset: 0,
+          inset: 64, // 64px minimum padding safe zone on all edges
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           gap: 70,
-          padding: "44px 64px",
           transform: `scale(${camScale}) translate(${camX}px, 0px)`,
           transformOrigin: "center center",
           willChange: "transform",

@@ -15,8 +15,8 @@ const MIN_SCALE = 0.75;
 const MAX_SCALE = 2.0;
 const MAX_PAN_X = VIEWPORT_W * 0.22; // ~422px max pan
 const MAX_PAN_Y = VIEWPORT_H * 0.18; // ~194px max pan
-const SAFE_MARGIN_X = VIEWPORT_W * 0.08;
-const SAFE_MARGIN_Y = VIEWPORT_H * 0.08;
+const SAFE_MARGIN_X = VIEWPORT_W * 0.125;
+const SAFE_MARGIN_Y = VIEWPORT_H * 0.125;
 
 export interface CameraTransform {
   scale: number;
@@ -277,4 +277,4 @@ export function cameraTransformStyle(t: CameraTransform): React.CSSProperties {
 }
 
 // Viewport helpers exposed for testing/safe framing consumers.
-export const CameraViewport = { width: VIEWPORT_W, height: VIEWPORT_H, safeMarginX: SAFE_MARGIN_X, safeMarginY: SAFE_MARGIN_Y };
+export const CameraViewport = { width: VIEWPORT_W, height: VIEWPORT_H, safeMarginX: SAFE_MARGIN_X, safeMarginY: SAFE_MARGIN_Y, marginFactor: 1.25 };

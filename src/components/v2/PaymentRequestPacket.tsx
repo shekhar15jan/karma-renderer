@@ -41,15 +41,16 @@ export const PaymentRequestPacket: React.FC<{ progress: number; visible: boolean
       </div>
       <div
         style={{
-          background: "#0f172a",
+          background: "rgba(255,255,255,0.08)",
+          backdropFilter: "blur(8px)",
           color: "#fff",
           fontSize: 10,
           fontWeight: 800,
           letterSpacing: 0.6,
           padding: "5px 10px",
           borderRadius: 8,
-          border: "1px solid rgba(255,255,255,0.15)",
-          boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+          border: "1px solid rgba(255,255,255,0.2)",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.4), 0 0 0 1px rgba(14,165,233,0.3)",
           whiteSpace: "nowrap",
         }}
       >

@@ -122,11 +122,13 @@ export async function renderVideoBuffer(request: ValidatedVideoRequest): Promise
       codec: "h264",
       outputLocation,
       inputProps,
-      chromiumOptions: { gl: "swangle" },
       concurrency,
-      x264Preset: x264Preset as "ultrafast" | "superfast" | "veryfast" | "fast" | "faster" | "medium" | "slow" | "slower" | "veryslow" | "placebo",
+      x264Preset: (x264Preset || "slow") as any,
       crf: 18,
       jpegQuality,
+      pixelFormat: "yuv420p",
+      scale: 2,
+      chromiumOptions: { gl: "swangle" },
       logLevel: "error",
       onProgress: (p) => {
         if (!currentProgress) return;
@@ -497,7 +499,7 @@ export async function renderStaticSlideVideo(request: ValidatedVideoRequest): Pr
     const videoOut = path.join(tmp, "video.mp4");
     await runFfmpeg(ffmpeg,
       [...inputArgs, "-filter_complex", vGraph.join(";"), "-map", "[vout]", "-an",
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-r", String(fps), videoOut],
+        "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-pix_fmt", "yuv420p", "-r", String(fps), videoOut],
       "video");
 
     // ---- audio filter graph (narrations at scene offsets + ducked music) -----
