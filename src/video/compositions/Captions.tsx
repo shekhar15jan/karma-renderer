@@ -58,7 +58,7 @@ const PRESETS: Record<string, React.CSSProperties> = {
   },
 };
 
-function wrapText(text: string, maxChars: number): string {
+function wrapText(text: string, maxChars: number): string[] {
   const words = text.split(" ");
   const lines: string[] = [];
   let current = "";
@@ -71,7 +71,7 @@ function wrapText(text: string, maxChars: number): string {
     }
   }
   if (current) lines.push(current.trim());
-  return lines.join("<br/>");
+  return lines;
 }
 
 export const Captions: React.FC<CaptionsProps> = ({
@@ -92,7 +92,7 @@ export const Captions: React.FC<CaptionsProps> = ({
 
   const style = PRESETS[preset] ?? PRESETS.youtube;
   const y = height * position;
-  const wrapped = wrapText(activeCue.text, maxCharsPerLine);
+  const wrappedLines = wrapText(activeCue.text, maxCharsPerLine);
 
   const fadeIn = 0.15;
   const fadeOut = 0.15;
@@ -127,8 +127,14 @@ export const Captions: React.FC<CaptionsProps> = ({
             transition: "opacity 0.1s ease-out, transform 0.1s ease-out",
             whiteSpace: "pre-line",
           }}
-          dangerouslySetInnerHTML={{ __html: wrapped }}
-        />
+        >
+          {wrappedLines.map((line, i) => (
+            <React.Fragment key={i}>
+              {i > 0 && <br />}
+              {line}
+            </React.Fragment>
+          ))}
+        </div>
       </div>
     </AbsoluteFill>
   );

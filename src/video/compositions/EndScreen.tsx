@@ -14,6 +14,10 @@ interface EndScreenProps {
   nextVideo?: { title: string; thumbnail?: string; videoId?: string };
   /** Second recommendation */
   secondVideo?: { title: string; thumbnail?: string; videoId?: string };
+  /** Dynamic recap items from scene chapter_titles (passed by KarmaVideo) */
+  recapItems?: string[];
+  /** Call to action text */
+  ctaText?: string;
 }
 
 const END_SCREEN_DURATION = 180; // frames at 30fps = 6 seconds
@@ -25,6 +29,8 @@ export const EndScreen: React.FC<EndScreenProps> = ({
   avatar,
   nextVideo,
   secondVideo,
+  recapItems: recapItemsProp,
+  ctaText,
 }) => {
   const frame = useCurrentFrame();
   const progress = frame / END_SCREEN_DURATION;
@@ -44,14 +50,10 @@ export const EndScreen: React.FC<EndScreenProps> = ({
     transition: "opacity 0.3s ease-out, transform 0.5s ease-out",
   };
 
-  // Refinement 10: Progressive recap — What We Mastered Today
-  const recapItems = [
-    "Race Conditions",
-    "Visibility & Happens-Before",
-    "Thread Models",
-    "Synchronization",
-    "Advanced Locks",
-  ];
+  // Use dynamic recap from chapter_titles if available, otherwise skip recap section
+  const recapItems = recapItemsProp && recapItemsProp.length > 0
+    ? recapItemsProp.slice(0, 6)  // Cap at 6 items to fit screen
+    : null;
 
   return (
     <AbsoluteFill style={containerStyle}>
@@ -64,24 +66,26 @@ export const EndScreen: React.FC<EndScreenProps> = ({
         padding: "40px",
         background: `linear-gradient(135deg, ${theme.background} 0%, ${theme.surface} 100%)`,
       }}>
-        {/* Progressive Recap — What We Mastered Today (Refinement 10) */}
+        {/* Progressive Recap — dynamic from chapter_titles */}
+        {recapItems && (
         <div style={{ marginBottom: "28px", textAlign: "center" }}>
           <div style={{ fontSize: "32px", fontWeight: 900, color: theme.headingColor, marginBottom: "16px", letterSpacing: -0.5 }}>
-            What We Mastered Today
+            What We Covered
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "flex-start" }}>
             {recapItems.map((item, idx) => {
               const appearAt = idx * 12; // 0.4s stagger
-              const opacity = interpolate(frame, [appearAt, appearAt + 12], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+              const itemOpacity = interpolate(frame, [appearAt, appearAt + 12], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
               const x = interpolate(frame, [appearAt, appearAt + 12], [-20, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
               return (
-                <div key={idx} style={{ opacity, transform: `translateX(${x}px)`, display: "flex", alignItems: "center", gap: "12px", fontSize: "20px", fontWeight: 600, color: theme.text }}>
+                <div key={idx} style={{ opacity: itemOpacity, transform: `translateX(${x}px)`, display: "flex", alignItems: "center", gap: "12px", fontSize: "20px", fontWeight: 600, color: theme.text }}>
                   <span style={{ color: "#10b981", fontSize: "22px" }}>✓</span> {item}
                 </div>
               );
             })}
           </div>
         </div>
+        )}
         {/* Channel subscribe section */}
         <div style={{
           display: "flex",

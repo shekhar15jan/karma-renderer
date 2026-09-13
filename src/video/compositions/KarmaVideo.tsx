@@ -205,15 +205,25 @@ export const KarmaVideo: React.FC<KarmaVideoProps> = ({ video, prepared }) => {
           maxCharsPerLine={p.captions.maxCharsPerLine}
         />
       )}
-      {video.enableIntro !== false && (
-        <Sequence from={endScreenStartFrame} durationInFrames={endScreenDurationFrames}>
-          <EndScreen 
-            theme={theme} 
-            channelName={video.introTitle} 
-            videoTitle={video.introSubtitle}
-          />
-        </Sequence>
-      )}
+      {video.enableIntro !== false && (() => {
+        // Extract chapter titles from scene specs for the dynamic recap
+        const recapItems = p.scenes
+          .map(s => {
+            const spec = s.spec as any;
+            return spec?.chapter_title || spec?.title || '';
+          })
+          .filter((t: string) => t.length > 0);
+        return (
+          <Sequence from={endScreenStartFrame} durationInFrames={endScreenDurationFrames}>
+            <EndScreen 
+              theme={theme} 
+              channelName={video.introTitle} 
+              videoTitle={video.introSubtitle}
+              recapItems={recapItems.length > 0 ? recapItems : undefined}
+            />
+          </Sequence>
+        );
+      })()}
     </AbsoluteFill>
   );
 };
