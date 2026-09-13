@@ -44,6 +44,15 @@ export const EndScreen: React.FC<EndScreenProps> = ({
     transition: "opacity 0.3s ease-out, transform 0.5s ease-out",
   };
 
+  // Refinement 10: Progressive recap — What We Mastered Today
+  const recapItems = [
+    "Race Conditions",
+    "Visibility & Happens-Before",
+    "Thread Models",
+    "Synchronization",
+    "Advanced Locks",
+  ];
+
   return (
     <AbsoluteFill style={containerStyle}>
       <div style={{
@@ -55,6 +64,24 @@ export const EndScreen: React.FC<EndScreenProps> = ({
         padding: "40px",
         background: `linear-gradient(135deg, ${theme.background} 0%, ${theme.surface} 100%)`,
       }}>
+        {/* Progressive Recap — What We Mastered Today (Refinement 10) */}
+        <div style={{ marginBottom: "28px", textAlign: "center" }}>
+          <div style={{ fontSize: "32px", fontWeight: 900, color: theme.headingColor, marginBottom: "16px", letterSpacing: -0.5 }}>
+            What We Mastered Today
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "flex-start" }}>
+            {recapItems.map((item, idx) => {
+              const appearAt = idx * 12; // 0.4s stagger
+              const opacity = interpolate(frame, [appearAt, appearAt + 12], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+              const x = interpolate(frame, [appearAt, appearAt + 12], [-20, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+              return (
+                <div key={idx} style={{ opacity, transform: `translateX(${x}px)`, display: "flex", alignItems: "center", gap: "12px", fontSize: "20px", fontWeight: 600, color: theme.text }}>
+                  <span style={{ color: "#10b981", fontSize: "22px" }}>✓</span> {item}
+                </div>
+              );
+            })}
+          </div>
+        </div>
         {/* Channel subscribe section */}
         <div style={{
           display: "flex",

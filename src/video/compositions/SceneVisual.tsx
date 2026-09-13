@@ -8,6 +8,8 @@ import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 import type { Theme } from "../../theme/themes";
 import type { SceneAnimation } from "../../core/types";
 import { KarmaComponentRenderer } from "./KarmaComponentRenderer";
+import { cameraTransform } from "../camera/cameraEngine";
+import type { CameraIntent } from "../schema/semanticSceneSpec";
 
 const SCENE_ENTRANCE_FRAMES = 18;
 
@@ -22,10 +24,12 @@ function themeCssVars(theme: Theme): React.CSSProperties {
     "--scene-secondary": theme.secondary,
     "--scene-accent": theme.accent,
     "--scene-border": theme.border,
+    "--scene-shadow": theme.shadow,
     "--scene-radius": `${theme.radius}px`,
     "--scene-spacing": `${theme.spacing}px`,
     "--scene-font": theme.font,
     "--scene-heading": theme.fontHeading,
+    "--scene-heading-color": theme.headingColor,
     "--scene-code": theme.fontCode,
   } as React.CSSProperties;
 }
@@ -53,8 +57,14 @@ interface SceneVisualProps {
   animation?: SceneAnimation;
   /** Render an entrance zoom on the whole scene (kept for backwards compat). */
   entrance?: boolean;
+  /** "static" renders the scene as one stable, fully-fitted frame (no intra-scene motion). */
+  sceneMotion?: "animated" | "static";
+  /** Background overlay pattern: "grid" (dots grid), "dots" (dense dots), "plain" (none). */
+  backgroundPattern?: "grid" | "dots" | "plain";
   timelineEvents?: { timestamp_ms: number; action: string; target_element_id?: string; zoom_start?: number; zoom_end?: number; duration_ms?: number; transform_origin?: string; pan_x_start?: number; pan_x_end?: number; pan_y_start?: number; pan_y_end?: number }[];
   spec?: any;
+  /** Semantic camera intent (Slice 6) — drives viewport transform via cameraEngine. */
+  camera?: CameraIntent;
 }
 
 const DEFAULT_ANIMATION: Required<Pick<SceneAnimation, "entrance" | "stagger" | "bullets" | "progress" | "drawCharts">> = {
@@ -103,20 +113,57 @@ function buildSceneDomCache(root: HTMLElement, html: string, highlightIds: strin
   };
 }
 
-export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationFrames, fps, animation, entrance = true, timelineEvents, spec }) => {
+export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationFrames, fps, animation, entrance = true, sceneMotion = "animated", timelineEvents, spec, backgroundPattern, camera }) => {
   const frame = useCurrentFrame();
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const fillRef = useRef<HTMLDivElement | null>(null);
   const cacheRef = useRef<SceneDomCache | null>(null);
+  const staticMode = sceneMotion === "static";
+  const pattern = backgroundPattern ?? (theme.gridBg ? "grid" : "plain");
   const anim = { ...DEFAULT_ANIMATION, ...animation } as Required<Pick<SceneAnimation, "entrance" | "stagger" | "bullets" | "progress" | "drawCharts">>;
   const highlights = animation?.highlights ?? [];
   const highlightIds = useMemo(() => highlights.map((h) => h.id), [highlights]);
 
   // Whole-scene entrance zoom (historical behaviour; disabled when per-element motion runs)
-  const zoom = interpolate(frame, [0, SCENE_ENTRANCE_FRAMES], [1.06, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const zoom = staticMode ? 1 : interpolate(frame, [0, SCENE_ENTRANCE_FRAMES], [1.06, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+
+  // Semantic camera (Slice 6): viewport-relative, safe-framed, Easing.out cubic.
+  // Resolves spec.camera or explicit camera prop via cameraEngine.
+  const semanticCamera: CameraIntent | undefined = camera ?? (spec as any)?.camera;
+  const camTransform = useMemo(() => {
+    if (staticMode) return { scale: 1, x: 0, y: 0 };
+    if (!semanticCamera) return null;
+    return cameraTransform(frame, fps, durationFrames, semanticCamera);
+  }, [frame, fps, durationFrames, semanticCamera, staticMode]);
+
+  // Static mode: measure the content once and scale it down to fit the canvas if it
+  // overflows, so every scene is one stable slide fully inside the window.
+  const [fitScale, setFitScale] = React.useState(1);
+  React.useEffect(() => {
+    if (!staticMode) return;
+    const el = fillRef.current;
+    if (!el) return;
+    const measure = () => {
+      const cw = el.clientWidth;
+      const ch = el.clientHeight;
+      const sw = el.scrollWidth;
+      const sh = el.scrollHeight;
+      if (cw <= 0 || ch <= 0) return;
+      setFitScale(Math.min(1, cw / Math.max(1, sw), ch / Math.max(1, sh)));
+    };
+    measure();
+    const raf = requestAnimationFrame(() => measure());
+    const t = setTimeout(() => measure(), 300);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(t);
+    };
+  }, [staticMode, html, spec]);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
+    if (staticMode) return;
     if (!cacheRef.current || cacheRef.current.html !== html) {
       cacheRef.current = buildSceneDomCache(root, html ?? "", highlightIds);
     }
@@ -155,7 +202,8 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
       }
     });
 
-    // --- highlights ---------------------------------------------------------------
+    // --- highlights + auto micro-animations (Refinements 2-3) ---------------------
+    // Primary highlights from script
     for (const h of highlights) {
       const target = cache.highlightTargets.get(h.id);
       if (!target) continue;
@@ -168,10 +216,26 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
           target.style.outlineOffset = "3px";
         }
         target.style.zIndex = "3";
+        // Subtle scale pulse at highlight moment (Refinement 3)
+        const pulseT = Math.min(1, (t - h.at) / 0.6);
+        if (pulseT < 1) {
+          const scale = 1 + 0.04 * (1 - pulseT) * Math.sin(pulseT * Math.PI * 3);
+          target.style.transform = `scale(${scale})`;
+        }
+      }
+    }
+    // Auto micro-animations every 3-6s when no explicit highlight (Refinement 3)
+    if (highlights.length === 0 && durationFrames / fps > 8 && t > 3) {
+      const autoInterval = 4; // seconds
+      const idx = Math.floor(t / autoInterval) % Math.max(1, cache.elements.length);
+      const autoEl = cache.elements[idx];
+      if (autoEl && t % autoInterval < 0.6) {
+        const p = (t % autoInterval) / 0.6;
+        autoEl.style.boxShadow = `0 0 0 ${4 * (1-p)}px ${theme.primary}22`;
       }
     }
 
-    // --- chart draw-in --------------------------------------------------------------
+    // --- chart draw-in + progressive diagram (Refinement 4) -----------------------
     if (anim.drawCharts) {
       const { bars } = cache;
       const line = cache.line;
@@ -204,6 +268,41 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
         }
       }
     }
+    // Progressive connection reveal (Refinement 4) — animate arrows sequentially
+    const svgConnections = root.querySelectorAll<SVGPathElement | SVGLineElement>("svg [data-connection]");
+    svgConnections.forEach((conn, idx) => {
+      const appearAt = 1.2 + idx * 0.5; // stagger connections 0.5s apart
+      const el = conn as unknown as HTMLElement;
+      if (t < appearAt) {
+        el.style.opacity = "0";
+      } else {
+        const p = Math.min(1, (t - appearAt) / 0.4);
+        el.style.opacity = String(easeOutCubic(p));
+        if (conn instanceof SVGPathElement || conn instanceof SVGLineElement) {
+          const len = (conn as unknown as SVGGeometryElement).getTotalLength?.() ?? 200;
+          el.style.strokeDasharray = `${len}`;
+          el.style.strokeDashoffset = String(len * (1 - easeOutCubic(p)));
+        }
+      }
+    });
+    // Code line highlight sync (Refinement 5) — highlight exact line being explained
+    const codeLines = root.querySelectorAll<HTMLElement>("[data-code-line], .token-line, pre code span");
+    if (codeLines.length > 0 && highlights.length > 0) {
+      // Map highlights that target code to line numbers if id contains line number
+      highlights.forEach((h) => {
+        if (h.id.includes("code") || h.id.includes("line")) {
+          const lineNum = parseInt(h.id.replace(/\D/g, ""), 10);
+          if (!isNaN(lineNum) && t >= h.at && t < h.at + 2.5) {
+            const targetLine = root.querySelector<HTMLElement>(`[data-line="${lineNum}"]`) || codeLines[lineNum - 1] as HTMLElement;
+            if (targetLine) {
+              targetLine.style.background = "rgba(79, 110, 247, 0.35)";
+              targetLine.style.borderLeft = `3px solid ${h.color ?? "#4f6ef7"}`;
+              targetLine.style.paddingLeft = "8px";
+            }
+          }
+        }
+      });
+    }
 
     // --- branding is part of the frame HTML (unchanged) -----------------------------
   }, [frame, fps, durationFrames, html, highlightIds, highlights, anim, theme.accent]);
@@ -214,12 +313,19 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
     }
   }, [html]);
 
-const progressPct = anim.progress ? Math.min(100, (frame / Math.max(1, durationFrames)) * 100) : null;
+  // V2 quality: hide debug progress bar for V2 semantic scenes (thin magenta line)
+  const isV2Scene = !!(spec as any)?.schemaVersion || !!(spec as any)?.visualIntent || !!(spec as any)?.semanticObjects;
+  const progressPct = !staticMode && anim.progress && !isV2Scene ? Math.min(100, (frame / Math.max(1, durationFrames)) * 100) : null;
 
-  // Compute dynamic transform from timelineEvents + Ken Burns
+  // Compute dynamic transform from timelineEvents + Ken Burns (legacy Stack A)
+  // Semantic camera (Slice 6) takes precedence when present — viewport-relative, Easing.out cubic, safe framing.
   let dynamicTransform = "";
   let transformOrigin = "center center";
-  if (timelineEvents && timelineEvents.length > 0) {
+  let semanticTransformCss: string | null = null;
+  if (camTransform) {
+    semanticTransformCss = `scale(${camTransform.scale.toFixed(4)}) translate(${camTransform.x.toFixed(1)}px, ${camTransform.y.toFixed(1)}px)`;
+    transformOrigin = "center center";
+  } else if (!staticMode && timelineEvents && timelineEvents.length > 0) {
     const tMs = (frame / fps) * 1000;
     for (const evt of timelineEvents) {
       if (tMs >= evt.timestamp_ms) {
@@ -262,32 +368,49 @@ const progressPct = anim.progress ? Math.min(100, (frame / Math.max(1, durationF
     }
   }
 
-  // Default Ken Burns if no timeline events but scene is long enough (> 5s)
+  // Default Ken Burns if no semantic camera, no timeline events but scene is long enough (> 5s)
   const sceneDurationSec = durationFrames / fps;
-  if (!dynamicTransform && sceneDurationSec > 5) {
+  if (!staticMode && !dynamicTransform && !semanticTransformCss && sceneDurationSec > 5) {
     const zoomProgress = Math.min(1, frame / durationFrames);
-    const zoom = 1.0 + 0.08 * easeOutCubic(zoomProgress); // Subtle 8% zoom
-    const panX = -20 * easeOutCubic(zoomProgress); // Slight pan left
-    const panY = -10 * easeOutCubic(zoomProgress); // Slight pan up
+    // FIX: 18% zoom (was 8% — invisible at 1920px); scales slightly with duration
+    const zoomAmount = Math.min(0.18, 0.08 + (sceneDurationSec / 30) * 0.10);
+    const zoom = 1.0 + zoomAmount * easeOutCubic(zoomProgress);
+    const panX = -40 * easeOutCubic(zoomProgress); // Visible pan left (was -20px)
+    const panY = -20 * easeOutCubic(zoomProgress); // Visible pan up  (was -10px)
     dynamicTransform = `scale(${zoom}) translate(${panX}px, ${panY}px)`;
     transformOrigin = "center center";
   }
 
-  const finalTransform = dynamicTransform ? dynamicTransform : `scale(${zoom})`;
+  const finalTransform = staticMode
+    ? `scale(${fitScale})`
+    : semanticTransformCss
+      ? semanticTransformCss
+      : dynamicTransform
+        ? dynamicTransform
+        : `scale(${zoom})`;
 
   return (
     <AbsoluteFill style={{ background: theme.background, ...themeCssVars(theme) }}>
-      {theme.gridBg ? (
+      {pattern === "grid" ? (
         <AbsoluteFill
           style={{
             backgroundImage: `radial-gradient(circle, ${theme.border}66 1px, transparent 1px)`,
             backgroundSize: "36px 36px",
           }}
         />
+      ) : pattern === "dots" ? (
+        <AbsoluteFill
+          style={{
+            backgroundImage: `radial-gradient(circle, ${theme.border}44 1px, transparent 1px)`,
+            backgroundSize: "18px 18px",
+          }}
+        />
       ) : null}
-      <AbsoluteFill style={{ transform: finalTransform, transformOrigin, overflow: "hidden", transition: "transform 0.5s ease-out" }}>
+      <AbsoluteFill ref={fillRef} style={{ transform: finalTransform, transformOrigin: staticMode ? "center center" : transformOrigin, overflow: "hidden", transition: staticMode ? "none" : "transform 0.5s ease-out" }}>
         {spec ? (
-          <KarmaComponentRenderer spec={spec} />
+          <div ref={rootRef} className="scene-content" style={{ width: "100%", height: "100%" }}>
+            <KarmaComponentRenderer spec={spec} theme={theme} />
+          </div>
         ) : (
           <div
             ref={rootRef}

@@ -62,13 +62,15 @@ const transitionStyle = (type: TransitionType | undefined, frame: number, transi
   }
 };
 
-const SceneBlock: React.FC<{ scene: PreparedScene; transition: number; isLast: boolean; theme: Theme; fps: number; defaultTransition: TransitionType }> = ({
+const SceneBlock: React.FC<{ scene: PreparedScene; transition: number; isLast: boolean; theme: Theme; fps: number; defaultTransition: TransitionType; sceneMotion: "animated" | "static"; backgroundPattern: "grid" | "dots" | "plain" }> = ({
   scene,
   transition,
   isLast,
   theme,
   fps,
   defaultTransition,
+  sceneMotion,
+  backgroundPattern,
 }) => {
   const frame = useCurrentFrame();
   const fadeIn = transition > 0 ? interpolate(frame, [0, transition], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) : 1;
@@ -86,6 +88,8 @@ const SceneBlock: React.FC<{ scene: PreparedScene; transition: number; isLast: b
           fps={fps}
           animation={scene.animation}
           timelineEvents={scene.timelineEvents}
+          sceneMotion={sceneMotion}
+          backgroundPattern={backgroundPattern}
         />
       </AbsoluteFill>
       {scene.audio ? <Audio src={scene.audio} /> : null}
@@ -138,10 +142,25 @@ const allCues = (scenes: PreparedScene[], fps: number): CaptionCue[] => {
   return cues;
 };
 
+import { hydrate } from "../objects/objectRegistry";
+
 export const KarmaVideo: React.FC<KarmaVideoProps> = ({ video, prepared }) => {
   if (!prepared) return null;
   const p = prepared;
   const theme = p.theme;
+  // Slice 5: Hydrate object registry across all scenes for continuity (§12)
+  useMemo(() => {
+    const registry: Record<string, any> = {};
+    for (const s of p.scenes) {
+      const objs = (s.spec as any)?.semanticObjects ?? (s.spec as any)?.objects ?? [];
+      for (const o of objs) {
+        if (o?.id && !registry[o.id]) registry[o.id] = { type: o.type ?? "SERVICE", visualIdentity: o.visualIdentity ?? `${String(o.type ?? "service").toLowerCase()}-01` };
+      }
+      const reg = (s.spec as any)?.registry;
+      if (reg) Object.assign(registry, reg);
+    }
+    hydrate(registry);
+  }, [p.scenes]);
 
   const cues = allCues(p.scenes, p.fps);
   
@@ -155,12 +174,12 @@ export const KarmaVideo: React.FC<KarmaVideoProps> = ({ video, prepared }) => {
       <style dangerouslySetInnerHTML={{ __html: SCENE_CSS }} />
       {p.introFrames > 0 ? (
         <Sequence from={0} durationInFrames={p.introFrames}>
-          <IntroCard video={video} accent={theme.accent} heading={theme.fontHeading} />
+          <IntroCard video={video} theme={theme} backgroundPattern={p.backgroundPattern} />
         </Sequence>
       ) : null}
       {p.scenes.map((s, i) => (
         <Sequence key={s.index} from={s.startFrame} durationInFrames={s.durationFrames + p.transition}>
-          <SceneBlock scene={s} transition={p.transition} isLast={i === p.scenes.length - 1} theme={theme} fps={p.fps} defaultTransition={video.transition} />
+          <SceneBlock scene={s} transition={p.transition} isLast={i === p.scenes.length - 1} theme={theme} fps={p.fps} defaultTransition={video.transition} sceneMotion={p.sceneMotion} backgroundPattern={p.backgroundPattern} />
         </Sequence>
       ))}
       <Branding branding={p.scenes[0]?.spec?.branding ?? video.scenes[0]?.visualSpec?.branding} theme={theme} />

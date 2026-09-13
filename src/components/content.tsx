@@ -121,7 +121,8 @@ function containerComponent(c: VisualComponent, ctx: ContentContext, index: numb
   const isOutlined = c.type === "outlined-container";
   const isModern = c.type === "modern-card";
   const isMinimal = c.type === "minimal-card";
-  const fill = c.fill ?? (isGlass ? "rgba(255,255,255,0.55)" : theme.surface);
+  const glassFill = theme.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.55)";
+  const fill = c.fill ?? (isGlass ? glassFill : theme.surface);
 
   const style =
     `background:${isGradient ? `linear-gradient(135deg, ${fill}, ${theme.surface2})` : fill};` +
@@ -146,7 +147,7 @@ function bannerComponent(c: VisualComponent, ctx: ContentContext, index: number)
   const tone = toneOf(c, index, theme, "yellow");
   const items = (c.items ?? []).map((it) => (typeof it === "string" ? { label: it } : it));
   return (
-    `<div class="banner" data-eid="${esc(c.id ?? "")}" data-order="${index}" data-type="banner" style="background:${tone.light};border:2px solid ${tone.border};border-radius:${theme.radius}px">` +
+    `<div class="banner" data-eid="${esc(c.id ?? "")}" data-order="${index}" data-type="banner" style="background:${theme.mode === "dark" ? theme.surface2 : tone.light};border:2px solid ${tone.border};border-radius:${theme.radius}px">` +
     `<span class="banner-icon" style="background:${tone.main};color:#fff">${iconSvg(c.icon ?? "lightbulb", 22)}</span>` +
     `<div class="banner-body">` +
     (label ? `<div class="banner-label">${esc(label)}</div>` : "") +
@@ -169,7 +170,7 @@ function pillCardComponent(c: VisualComponent, ctx: ContentContext, index: numbe
   const num = c.data?.num != null ? String(c.data.num) : "";
   const items = (c.items ?? []).map((it) => (typeof it === "string" ? { label: it } : it));
   return (
-    `<div class="pill-card" data-eid="${esc(c.id ?? "")}" data-order="${index}" data-type="pill-card" style="background:#fff;border:2px solid ${tone.border};border-radius:${theme.radius}px;box-shadow:${theme.shadow}">` +
+    `<div class="pill-card" data-eid="${esc(c.id ?? "")}" data-order="${index}" data-type="pill-card" style="background:${theme.surface};border:2px solid ${tone.border};border-radius:${theme.radius}px;box-shadow:${theme.shadow}">` +
     `<div class="pill-badge" style="background:${tone.pillBg}">${num ? `<span class="pill-num">${esc(num)}</span>` : ""}<span>${esc(label)}</span></div>` +
     `<div class="pill-body">` +
     (sub ? `<div class="pill-sub">${esc(sub)}</div>` : "") +
@@ -192,7 +193,7 @@ function pillarComponent(c: VisualComponent, ctx: ContentContext, index: number)
   const content = items.length
     ? `<div class="pillar-content"><ul class="bullet-list">${items.map((it, bi) => `<li data-bullet="${bi}">${esc(it.label)}${it.sublabel ? `<span class="sub">${esc(it.sublabel)}</span>` : ""}</li>`).join("")}</ul></div>`
     : c.sublabel ? `<div class="pillar-content"><div class="pill-text">${esc(c.sublabel)}</div></div>` : "";
-  return `<div class="pillar" data-eid="${esc(c.id ?? "")}" data-order="${index}" data-type="pillar" style="border:1px solid ${tone.border};border-radius:${theme.radius}px;background:#fff;box-shadow:${theme.shadow}">${header}${content}</div>`;
+  return `<div class="pillar" data-eid="${esc(c.id ?? "")}" data-order="${index}" data-type="pillar" style="border:1px solid ${tone.border};border-radius:${theme.radius}px;background:${theme.surface};box-shadow:${theme.shadow}">${header}${content}</div>`;
 }
 
 // ---------------------------------------------------------------- timeline / roadmap

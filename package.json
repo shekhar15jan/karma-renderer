@@ -24,7 +24,6 @@
     "express": "^4.19.2",
     "lightningcss": "^1.33.0",
     "prismjs": "^1.30.0",
-    "puppeteer": "^23.5.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "remotion": "^4.0.507",
@@ -34,7 +33,6 @@
   "devDependencies": {
     "@types/express": "^4.17.21",
     "@types/node": "^22.7.5",
-    "@types/puppeteer": "^7.0.4",
     "@types/react": "^18.3.10",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.5.4",

@@ -10,6 +10,7 @@ WORKDIR /app
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       chromium \
+      ffmpeg \
       fonts-liberation fonts-noto-cjk fonts-dejavu-core \
       ca-certificates curl \
       libxss1 libnss3 libasound2 libatk-bridge2.0-0 libgtk-3-0 libgbm1 \
@@ -28,6 +29,7 @@ RUN npm install --no-audit --no-fund
 RUN npx remotion browser ensure
 
 COPY tsconfig.json ./
+COPY tailwind.config.js ./
 COPY src ./src
 RUN npx tsc -p tsconfig.json && cp -r src/styles dist/styles && npm prune --omit=dev --no-audit --no-fund
 

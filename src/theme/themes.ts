@@ -3,6 +3,8 @@
 export interface Theme {
   id: string;
   name: string;
+  /** Lightness mode, used to pick text/background contrast for hardcoded tone widgets. */
+  mode: "light" | "dark";
   background: string;
   surface: string;
   surface2: string;
@@ -38,6 +40,7 @@ export const THEMES: Record<string, Theme> = {
   whiteboard: {
     id: "whiteboard",
     name: "Whiteboard",
+    mode: "light",
     background: "#ffffff",
     surface: "#f5f7fa",
     surface2: "#eef1f6",
@@ -67,6 +70,7 @@ export const THEMES: Record<string, Theme> = {
   corporate: {
     id: "corporate",
     name: "Corporate",
+    mode: "light",
     background: "#f8fafc",
     surface: "#ffffff",
     surface2: "#eef2f7",
@@ -95,31 +99,34 @@ export const THEMES: Record<string, Theme> = {
   minimal: {
     id: "minimal",
     name: "Minimal",
-    background: "#ffffff",
-    surface: "#fafafa",
-    surface2: "#f0f0f0",
-    text: "#171717",
-    muted: "#737373",
-    primary: "#171717",
-    secondary: "#525252",
-    accent: "#000000",
-    border: "#d4d4d4",
-    shadow: "0 1px 2px rgba(0,0,0,0.06)",
-    radius: 4,
-    spacing: 16,
+    mode: "light",
+    background: "#F8F9FA",
+    surface: "#FFFFFF",
+    surface2: "#F1F5F9",
+    text: "#0F172A",
+    muted: "#64748B",
+    primary: "#3B82F6", // Soft Blue
+    secondary: "#64748B",
+    accent: "#6366F1",  // Indigo
+    border: "#E2E8F0",
+    shadow: "0 10px 40px -10px rgba(0,0,0,0.08)",
+    radius: 20,
+    spacing: 24,
     font: fonts.sans,
     fontHeading: fonts.heading,
     fontCode: fonts.mono,
-    headingColor: "#171717",
-    codeBg: "#171717",
-    codeText: "#f5f5f5",
-    arrowColor: "#404040",
-    palette: ["#e5e5e5", "#ececec", "#f0f0f0", "#e8e8e8", "#d4d4d4", "#e2e2e2", "#efefef", "#fafafa", "#ededed", "#e6e6e6"],
-    shapeLine: ["#404040", "#525252", "#404040", "#525252", "#404040", "#525252", "#404040", "#737373", "#525252", "#404040"],
+    headingColor: "#0F172A",
+    codeBg: "#0F172A",
+    codeText: "#F8FAFC",
+    arrowColor: "#475569",
+    gridBg: true,
+    palette: ["#EFF6FF", "#F0FDF4", "#FEF2F2", "#FFF7ED", "#F8FAFC", "#EEF2FF", "#FDF4FF", "#ECFEFF", "#FFFBEB", "#F1F5F9"],
+    shapeLine: ["#3B82F6", "#22C55E", "#EF4444", "#F97316", "#64748B", "#6366F1", "#D946EF", "#06B6D4", "#F59E0B", "#475569"],
   },
   dark: {
     id: "dark",
     name: "Dark",
+    mode: "dark",
     background: "#0b1220",
     surface: "#111a2e",
     surface2: "#16213a",
@@ -148,6 +155,7 @@ export const THEMES: Record<string, Theme> = {
   glass: {
     id: "glass",
     name: "Glass",
+    mode: "light",
     background: "linear-gradient(135deg, #e8edf5 0%, #d7e0ec 100%)",
     surface: "rgba(255,255,255,0.55)",
     surface2: "rgba(255,255,255,0.35)",
@@ -177,6 +185,7 @@ export const THEMES: Record<string, Theme> = {
   technical: {
     id: "technical",
     name: "Technical",
+    mode: "light",
     background: "#ffffff",
     surface: "#f4f6f8",
     surface2: "#e8ecf0",
@@ -205,6 +214,7 @@ export const THEMES: Record<string, Theme> = {
   codeatcloud: {
     id: "codeatcloud",
     name: "CodeAtCloud AI",
+    mode: "dark",
     background: "#0A0F1C",
     surface: "#121A2F",
     surface2: "#1A243F",
@@ -233,9 +243,9 @@ export const THEMES: Record<string, Theme> = {
 };
 
 export function getTheme(id?: string): Theme {
-  if (!id) return THEMES.whiteboard;
+  if (!id) return THEMES.minimal;
   const t = THEMES[id];
-  return t ?? THEMES.whiteboard;
+  return t ?? THEMES.minimal;
 }
 
 /** Deterministic palette picker for a component index. */

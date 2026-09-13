@@ -12,8 +12,10 @@ import testSpec from './mock_specs/terminal_test.json';
 const DEFAULT_VIDEO: ValidatedVideoRequest = {
   fps: 30,
   resolution: { width: 1920, height: 1080 },
+  sceneMotion: "animated",
   transitionDuration: 15,
   transition: "fade",
+  backgroundPattern: "grid",
   enableIntro: true,
   introTitle: "Karma OS",
   introSubtitle: "Test Environment",
