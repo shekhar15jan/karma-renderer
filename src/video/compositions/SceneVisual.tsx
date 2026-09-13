@@ -372,9 +372,11 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
   const sceneDurationSec = durationFrames / fps;
   if (!staticMode && !dynamicTransform && !semanticTransformCss && sceneDurationSec > 5) {
     const zoomProgress = Math.min(1, frame / durationFrames);
-    const zoom = 1.0 + 0.08 * easeOutCubic(zoomProgress); // Subtle 8% zoom
-    const panX = -20 * easeOutCubic(zoomProgress); // Slight pan left
-    const panY = -10 * easeOutCubic(zoomProgress); // Slight pan up
+    // FIX: 18% zoom (was 8% — invisible at 1920px); scales slightly with duration
+    const zoomAmount = Math.min(0.18, 0.08 + (sceneDurationSec / 30) * 0.10);
+    const zoom = 1.0 + zoomAmount * easeOutCubic(zoomProgress);
+    const panX = -40 * easeOutCubic(zoomProgress); // Visible pan left (was -20px)
+    const panY = -20 * easeOutCubic(zoomProgress); // Visible pan up  (was -10px)
     dynamicTransform = `scale(${zoom}) translate(${panX}px, ${panY}px)`;
     transformOrigin = "center center";
   }

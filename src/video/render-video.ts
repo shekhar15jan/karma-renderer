@@ -13,6 +13,30 @@ import { generateSRT } from "./compositions/Captions";
 
 const COMPOSITION_ID = "karma-video";
 
+/**
+ * Process-level Remotion bundle cache.
+ * bundle() compiles webpack (~10s cold start). Since the entry point never changes
+ * within a process lifetime, we cache the resulting serveUrl and reuse it for all
+ * subsequent requests — reducing cold-start latency from ~10s to ~0ms.
+ */
+const bundleCache = new Map<string, string>(); // entryPoint → serveUrl
+
+async function getCachedBundle(entryPoint: string): Promise<string> {
+  if (bundleCache.has(entryPoint)) {
+    console.log(`[bundle-cache] HIT — reusing bundle for ${path.basename(entryPoint)}`);
+    return bundleCache.get(entryPoint)!;
+  }
+  console.log(`[bundle-cache] MISS — compiling bundle for ${path.basename(entryPoint)} (first request only)`);
+  const serveUrl = await bundle({
+    entryPoint,
+    webpackOverride: (current) => enableTailwind(current, { configLocation: resolveTailwindConfig() }),
+    onProgress: (p) => p,
+  });
+  bundleCache.set(entryPoint, serveUrl);
+  console.log(`[bundle-cache] STORED — future requests will be instant`);
+  return serveUrl;
+}
+
 /** Resolves the Tailwind config explicitly so utilities are generated regardless of CWD. */
 export function resolveTailwindConfig(): string {
   return path.resolve(__dirname, "..", "..", "tailwind.config.js");
@@ -97,11 +121,7 @@ export async function renderVideoBuffer(request: ValidatedVideoRequest): Promise
 
   const inputProps = { video: request };
 
-  const serveUrl = await bundle({
-    entryPoint,
-    webpackOverride: (current) => enableTailwind(current, { configLocation: resolveTailwindConfig() }),
-    onProgress: (p) => p,
-  });
+  const serveUrl = await getCachedBundle(entryPoint);
   const composition = await selectComposition({ serveUrl, id: COMPOSITION_ID, inputProps });
   currentProgress = {
     status: "rendering",
@@ -370,11 +390,7 @@ export async function renderStaticSlideVideo(request: ValidatedVideoRequest): Pr
   const entryPoint = resolveRemotionEntry();
   const inputProps = { video: request };
 
-  const serveUrl = await bundle({
-    entryPoint,
-    webpackOverride: (current) => enableTailwind(current, { configLocation: resolveTailwindConfig() }),
-    onProgress: (p) => p,
-  });
+  const serveUrl = await getCachedBundle(entryPoint);
   const composition = await selectComposition({ serveUrl, id: COMPOSITION_ID, inputProps });
   const fps = composition.fps;
   const width = composition.width;

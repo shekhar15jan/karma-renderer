@@ -1,4 +1,5 @@
 import React from 'react';
+import { useCurrentFrame, useVideoConfig } from 'remotion';
 import type { Theme } from '../../theme/themes';
 import { KarmaHeading, KarmaParagraph, KarmaContainer, KarmaGrid, KarmaSplitLayout, KarmaArchitecturePipeline, KarmaCard, KarmaBadge, KarmaCodeBlock, KarmaText, KarmaBulletList, KarmaUmlClassNode, KarmaUmlActorNode, KarmaUmlUseCaseNode, KarmaUmlLifeline, KarmaUmlMessageArrow, KarmaUmlDecisionNode, KarmaUmlComponentNode, KarmaUmlPackageNode, KarmaUmlDatabaseNode, KarmaUmlNoteNode, KarmaFlowDiagram, KarmaFlowTerminalNode, KarmaFlowProcessNode, KarmaFlowIONode, KarmaFlowDocumentNode, KarmaUmlCloudNode, KarmaUmlDeploymentNode, KarmaUmlInterfaceNode, KarmaUmlSyncBarNode, KarmaMicroserviceNode, KarmaApiGatewayNode, KarmaMessageQueueNode, KarmaDockerNode, KarmaKubernetesNode, KarmaLoggingNode, KarmaBrowserNode, KarmaAwsNode, KarmaAzureNode, KarmaGcpNode, KarmaLanguageNode, KarmaConnector, KarmaSlideHeader, KarmaTerminalWindow, KarmaRoadmapTimeline, ThemeModeContext, KarmaBarChart, KarmaDonutChart, KarmaProgressBar, KarmaProfileCard } from '../../components/widgets/HtmlWidgets';
 import { KarmaGraphScene } from './KarmaGraphScene';
@@ -408,11 +409,19 @@ const KarmaComponentRendererInner: React.FC<{ spec: any, animationDelayOverride?
             </div>
           }
           right={
-            <div className="w-full shadow-2xl rounded-xl overflow-hidden border border-[var(--scene-border)] bg-[#0d1117]">
-              <div className="bg-[#161b22] px-4 py-3 flex items-center gap-2 border-b border-[#30363d]">
-                <div className="w-3 h-3 rounded-full bg-rose-500"></div><div className="w-3 h-3 rounded-full bg-amber-500"></div><div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+            // FIX: Use flex column so code fills all available height, never clips
+            <div className="w-full h-full shadow-2xl rounded-xl overflow-hidden border border-[var(--scene-border)] bg-[#0d1117] flex flex-col">
+              {/* macOS-style window chrome */}
+              <div className="shrink-0 bg-[#161b22] px-4 py-3 flex items-center gap-2 border-b border-[#30363d]">
+                <div className="w-3 h-3 rounded-full bg-rose-500"></div>
+                <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                {spec.title && (
+                  <span className="ml-2 text-xs text-[#8b949e] truncate font-mono">{spec.title}</span>
+                )}
               </div>
-              <div className="p-8 h-[600px] overflow-auto">
+              {/* Code area: flex-1 + min-h-0 ensures it fills remaining height without fixed px */}
+              <div className="flex-1 min-h-0 overflow-auto p-6 text-[13px] leading-relaxed">
                 {codeComponents.map((c: any, i: number) => renderComponent(c, i))}
               </div>
             </div>
@@ -547,15 +556,40 @@ const KarmaComponentRendererInner: React.FC<{ spec: any, animationDelayOverride?
           </div>
         )}
 
-        {/* 8. big-number */}
-        {layout === 'big-number' && (
-          <div className="w-full h-full flex flex-col items-center justify-center">
-             <div className="text-[200px] font-black text-transparent bg-clip-text bg-gradient-to-br from-[var(--scene-primary)] to-[var(--scene-accent)] leading-none" style={{ fontFamily: "var(--scene-heading)" }}>
-                {components[0]?.data?.value || components[0]?.label || '0'}
-             </div>
-             {components[1] && <div className="mt-8">{renderComponent(components[1], 1)}</div>}
-          </div>
-        )}
+        {/* 8. big-number — animated counter from 0 to target value */}
+        {layout === 'big-number' && (() => {
+          const frame = useCurrentFrame();
+          const { durationInFrames, fps } = useVideoConfig();
+          const rawValue = components[0]?.data?.value || components[0]?.label || '0';
+          const numericMatch = String(rawValue).match(/^([\d,\.]+)(.*)$/);
+          // Animate: count from 0 to target over the first 60% of scene
+          const countFrames = Math.floor(durationInFrames * 0.6);
+          const progress = Math.min(1, frame / Math.max(1, countFrames));
+          // Ease-out cubic for natural deceleration
+          const eased = 1 - Math.pow(1 - progress, 3);
+          let displayValue: string;
+          if (numericMatch) {
+            const target = parseFloat(numericMatch[1].replace(/,/g, ''));
+            const suffix = numericMatch[2] || '';
+            const current = Math.floor(target * eased);
+            // Restore thousands separator if original had one
+            const formatted = rawValue.includes(',') ? current.toLocaleString() : String(current);
+            displayValue = formatted + suffix;
+          } else {
+            displayValue = rawValue;
+          }
+          return (
+            <div className="w-full h-full flex flex-col items-center justify-center" style={{ opacity: Math.min(1, eased + 0.1) }}>
+              <div
+                className="font-black text-transparent bg-clip-text bg-gradient-to-br from-[var(--scene-primary)] to-[var(--scene-accent)] leading-none tabular-nums"
+                style={{ fontFamily: "var(--scene-heading)", fontSize: 'clamp(80px, 18vw, 200px)' }}
+              >
+                {displayValue}
+              </div>
+              {components[1] && <div className="mt-8">{renderComponent(components[1], 1)}</div>}
+            </div>
+          );
+        })()}
 
         {/* 14. bento (Modern asymmetric grid) */}
         {layout === 'bento' && (
