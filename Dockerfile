@@ -30,8 +30,13 @@ RUN npx remotion browser ensure
 
 COPY tsconfig.json ./
 COPY tailwind.config.js ./
+COPY scripts ./scripts
+# Brand marks are read by scripts/build-tech-icons.js at build time and inlined
+# into src/icons/techIcons.generated.ts — the Remotion bundle runs in Chromium
+# and cannot read them off disk at render time.
+COPY assets ./assets
 COPY src ./src
-RUN npx tsc -p tsconfig.json && cp -r src/styles dist/styles && npm prune --omit=dev --no-audit --no-fund
+RUN npm run build && npm prune --omit=dev --no-audit --no-fund
 
 EXPOSE 3000
 

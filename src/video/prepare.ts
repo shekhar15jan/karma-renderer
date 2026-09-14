@@ -132,5 +132,10 @@ export async function prepareVideo(video: ValidatedVideoRequest): Promise<Prepar
     maxCharsPerLine: video.captions.maxCharsPerLine ?? 42,
   } : undefined;
 
-  return { fps, width, height, sceneMotion: video.sceneMotion, introFrames, transition, totalFrames, endPaddingFrames: video.endPaddingFrames, scenes, music: video.music, musicVolume: video.musicVolume, theme, backgroundPattern: video.backgroundPattern, captions: captionsConfig, chapters: video.chapters };
+  // "hybrid" is a render-orchestration strategy handled entirely in render-video.ts
+  // (renderHybridSlideVideo never calls prepareVideo/this function) — the composition
+  // itself only ever needs to know "animated" vs "static" per-frame behavior, so treat
+  // hybrid as animated here as a safe fallback in case this path is ever reached.
+  const compositionSceneMotion: "animated" | "static" = video.sceneMotion === "static" ? "static" : "animated";
+  return { fps, width, height, sceneMotion: compositionSceneMotion, introFrames, transition, totalFrames, endPaddingFrames: video.endPaddingFrames, scenes, music: video.music, musicVolume: video.musicVolume, theme, backgroundPattern: video.backgroundPattern, captions: captionsConfig, chapters: video.chapters };
 }

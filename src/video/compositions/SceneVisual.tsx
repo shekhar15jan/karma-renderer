@@ -279,9 +279,17 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
         const p = Math.min(1, (t - appearAt) / 0.4);
         el.style.opacity = String(easeOutCubic(p));
         if (conn instanceof SVGPathElement || conn instanceof SVGLineElement) {
-          const len = (conn as unknown as SVGGeometryElement).getTotalLength?.() ?? 200;
-          el.style.strokeDasharray = `${len}`;
-          el.style.strokeDashoffset = String(len * (1 - easeOutCubic(p)));
+          if (p < 1) {
+            const len = (conn as unknown as SVGGeometryElement).getTotalLength?.() ?? 200;
+            el.style.strokeDasharray = `${len}`;
+            el.style.strokeDashoffset = String(len * (1 - easeOutCubic(p)));
+          } else {
+            // Reveal complete — clear the draw-in override so a "dashed" connection's
+            // own dash pattern (set via its stroke-dasharray attribute) shows through
+            // again instead of staying solid forever.
+            el.style.strokeDasharray = "";
+            el.style.strokeDashoffset = "";
+          }
         }
       }
     });
@@ -368,18 +376,16 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
     }
   }
 
-  // Default Ken Burns if no semantic camera, no timeline events but scene is long enough (> 5s)
-  const sceneDurationSec = durationFrames / fps;
-  if (!staticMode && !dynamicTransform && !semanticTransformCss && sceneDurationSec > 5) {
-    const zoomProgress = Math.min(1, frame / durationFrames);
-    // FIX: 18% zoom (was 8% — invisible at 1920px); scales slightly with duration
-    const zoomAmount = Math.min(0.18, 0.08 + (sceneDurationSec / 30) * 0.10);
-    const zoom = 1.0 + zoomAmount * easeOutCubic(zoomProgress);
-    const panX = -40 * easeOutCubic(zoomProgress); // Visible pan left (was -20px)
-    const panY = -20 * easeOutCubic(zoomProgress); // Visible pan up  (was -10px)
-    dynamicTransform = `scale(${zoom}) translate(${panX}px, ${panY}px)`;
-    transformOrigin = "center center";
-  }
+  // A "default Ken Burns" used to apply here whenever a scene had no explicit camera
+  // or timelineEvents: an unbounded 8-18% zoom combined with a fixed -40px/-20px pan,
+  // applied to EVERY animated scene over 5s regardless of what was in frame. Content
+  // is laid out edge-anchored (headers top-left with modest padding, not centred with
+  // margin to spare), so that pan reliably pushed titles and headers past the left
+  // edge by the scene's end — confirmed across multiple real renders, not a one-off.
+  // Removed rather than retuned: staggered entrance, highlight pulses, connector
+  // draw-in, and bar-chart grow-in already give every scene deliberate, bounded
+  // motion: a generic unbounded pan on top of that is redundant, not required for
+  // engagement, and was the one mechanism actually causing visible breakage.
 
   const finalTransform = staticMode
     ? `scale(${fitScale})`

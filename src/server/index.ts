@@ -7,7 +7,11 @@ import { buildDocument } from "../renderer/document";
 import { KNOWN_ICONS } from "../icons/icons";
 import { THEMES } from "../theme/themes";
 import { safeValidateVideoRequest, sanitizeVideoRequest } from "../video/video-schema";
-import { renderVideoBuffer, renderStaticSlideVideo, getCurrentRenderProgress } from "../video/render-video";
+import { renderVideoBuffer, renderStaticSlideVideo, renderHybridSlideVideo, getCurrentRenderProgress } from "../video/render-video";
+import { CATALOGUE } from "../catalogue/index";
+import { FRAME_COMPONENTS } from "../video/frames/registry";
+import { TECH_ICONS } from "../icons/techIcons.generated";
+import { assignWithFallback, type SceneComponent } from "../catalogue/assign";
 
 const app = express();
 app.use(express.json({ limit: "200mb" }));
@@ -19,6 +23,61 @@ app.get("/health", (_req: Request, res: Response) => {
 
 app.get("/icons", (_req: Request, res: Response) => {
   res.json({ icons: KNOWN_ICONS });
+});
+
+/** The frame/widget/icon catalogue, for a read-only browser UI (never used by the
+ *  render pipeline itself — that reads catalogue/index.ts directly, in-process). */
+app.get("/catalogue", (_req: Request, res: Response) => {
+  res.json({
+    version: CATALOGUE.version,
+    atoms: CATALOGUE.atoms,
+    frames: CATALOGUE.frames.map((f) => ({
+      ...f,
+      migrated: Boolean(FRAME_COMPONENTS[f.id]),
+    })),
+    widgets: CATALOGUE.widgets,
+    icons: Object.values(TECH_ICONS).map((i) => ({
+      slug: i.slug,
+      title: i.title,
+      category: i.category,
+      hex: i.hex,
+      source: i.source,
+    })),
+  });
+});
+
+interface ValidateScene {
+  sceneIndex: number;
+  frameId: string;
+  components: SceneComponent[];
+}
+
+/** Dry-run slot assignment for a proposed frame+components pairing, without rendering.
+ *  Used by the Director Agent (karma-backend) to confirm a chosen frame's slot contract
+ *  is actually satisfiable — including the fallback walk assignWithFallback already
+ *  does internally — before it's accepted into the script. No I/O, pure/synchronous. */
+app.post("/catalogue/validate", (req: Request, res: Response) => {
+  const scenes = req.body?.scenes;
+  if (!Array.isArray(scenes)) {
+    res.status(400).json({ success: false, error: "expected { scenes: [{ sceneIndex, frameId, components }] }" });
+    return;
+  }
+  try {
+    const results = scenes.map((s: ValidateScene) => {
+      const assignment = assignWithFallback(s.frameId, s.components ?? []);
+      return {
+        sceneIndex: s.sceneIndex,
+        frame: s.frameId,
+        resolvedFrame: assignment.frame,
+        unsatisfied: assignment.unsatisfied,
+        issues: assignment.issues,
+      };
+    });
+    res.json({ success: true, results });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    res.status(400).json({ success: false, error: "Validation failed: " + msg });
+  }
 });
 
 app.get("/video/progress", (_req: Request, res: Response) => {
@@ -40,6 +99,8 @@ app.post("/video", async (req: Request, res: Response) => {
   try {
     const result = validated.data.sceneMotion === "static"
       ? await renderStaticSlideVideo(validated.data)
+      : validated.data.sceneMotion === "hybrid"
+      ? await renderHybridSlideVideo(validated.data)
       : await renderVideoBuffer(validated.data);
     res.setHeader("Content-Type", "video/mp4");
     res.setHeader("Content-Length", result.buffer.length);

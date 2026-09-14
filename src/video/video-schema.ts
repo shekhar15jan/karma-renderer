@@ -58,9 +58,12 @@ export const videoRequestSchema = z.object({
   resolution: z
     .object({ width: z.number().int().positive().default(1920), height: z.number().int().positive().default(1080) })
     .default({ width: 1920, height: 1080 }),
-  /** Intra-scene motion: "animated" keeps per-frame entrance/Ken Burns/progress effects;
-   *  "static" renders each scene as one stable frame (transitions between scenes still apply). */
-  sceneMotion: z.enum(["animated", "static"]).default("animated"),
+  /** Intra-scene motion: "animated" keeps per-frame entrance/Ken Burns/progress effects for
+   *  a scene's full duration; "static" renders each scene as one stable frame (transitions
+   *  between scenes still apply); "hybrid" renders only each scene's scripted motion window
+   *  (entrance, connector reveals, highlights) at full frame rate and holds the last frame
+   *  for the remainder — most of animated's visual fidelity at close to static's speed. */
+  sceneMotion: z.enum(["animated", "static", "hybrid"]).default("animated"),
   /** Extra frames between scenes (crossfade/wipe). */
   transitionDuration: z.number().int().min(0).max(120).default(15),
   /** Default transition used between scenes when a scene does not override it. */

@@ -22,7 +22,7 @@ export const useViewportScale = () => {
 };
 
 // Base animation hook
-const useEntranceAnimation = (startFrame: number, duration: number = 15) => {
+export const useEntranceAnimation = (startFrame: number, duration: number = 15) => {
   const frame = useCurrentFrame();
   const opacity = interpolate(frame, [startFrame, startFrame + duration], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const y = interpolate(frame, [startFrame, startFrame + duration], [20, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
@@ -298,7 +298,7 @@ export const KarmaCodeBlock: React.FC<{ code: string, language?: string, animati
         <div className="w-3.5 h-3.5 rounded-full bg-green-500"></div>
         <span className="ml-6 text-sm text-slate-400 font-mono tracking-wider uppercase" style={{ fontSize: `${14 * viewportScale}px` }}>{language}</span>
       </div>
-      <pre className="p-8 font-mono text-emerald-300 overflow-hidden leading-relaxed" style={{ fontSize: `${18 * viewportScale}px` }}>
+      <pre className="p-8 font-mono text-emerald-300 overflow-hidden leading-relaxed whitespace-pre-wrap break-words" style={{ fontSize: `${18 * viewportScale}px` }}>
         <code>{code}</code>
       </pre>
     </div>
@@ -877,26 +877,47 @@ export const KarmaConnector: React.FC<{
 
 // --- New Widgets (Added for variety/data rendering) ---
 
+/** Matches the `h-64` container below in pixels. A CSS `height: N%` on the bar itself
+ *  cannot resolve (its flex-column parent is auto-height, not a definite height), so bar
+ *  height is computed here in real pixels against this constant instead — otherwise every
+ *  bar silently renders as a ~4px sliver regardless of value, which is what was happening. */
+const BAR_CHART_HEIGHT_PX = 256;
+
 export const KarmaBarChart: React.FC<{ data: { label: string, value: number }[], max?: number, animationDelay?: number }> = ({ data, max, animationDelay = 5 }) => {
   const { opacity, y } = useEntranceAnimation(animationDelay);
+  const frame = useCurrentFrame();
   const maxValue = max || Math.max(...data.map(d => d.value));
 
+  // Intrinsic height only (no h-full/justify-end): this chart can sit inside a `flex-col`
+  // ancestor whose own height is itself resolved via a child's height (standard-content),
+  // where percentage/stretch sizing does not reliably cascade — sizing from content instead
+  // guarantees the chart always renders at its real, intended height.
   return (
-    <div className="w-full h-full flex flex-col gap-3 justify-end pt-8" style={{ opacity, transform: `translateY(${y}px)` }}>
-      <div className="flex items-end justify-between h-64 gap-4 border-b-2 border-[var(--scene-border)] pb-2 relative">
+    <div className="w-full flex flex-col gap-3 pt-8" style={{ opacity, transform: `translateY(${y}px)` }}>
+      <div className="flex items-end justify-between gap-4 border-b-2 border-[var(--scene-border)] pb-2 relative" style={{ height: BAR_CHART_HEIGHT_PX }}>
         {data.map((d, i) => {
           const heightPct = (d.value / maxValue) * 100;
+          // Bars grow in left-to-right, staggered, so the chart reads as data arriving
+          // rather than appearing fully-formed — matches the video's audio-driven pacing.
+          const barStart = animationDelay + 6 + i * 4;
+          const growth = interpolate(frame, [barStart, barStart + 14], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+          const eased = 1 - Math.pow(1 - growth, 3);
+          const barHeightPx = (heightPct / 100) * BAR_CHART_HEIGHT_PX * eased;
           return (
-            <div key={i} className="flex flex-col items-center flex-1 gap-2 group">
-              <div className="text-xl font-bold opacity-0 group-hover:opacity-100 transition-opacity mb-1">{d.value}</div>
-              <div 
-                className="w-full bg-[var(--scene-primary)] rounded-t-sm shadow-[var(--scene-shadow)]" 
-                style={{ height: `${heightPct}%`, minHeight: '4px' }}
+            <div key={i} className="flex flex-col items-center justify-end flex-1 gap-2 group" style={{ height: BAR_CHART_HEIGHT_PX }}>
+              <div className="text-xl font-bold transition-opacity mb-1" style={{ opacity: eased }}>{d.value}</div>
+              <div
+                className="w-full bg-[var(--scene-primary)] rounded-t-sm shadow-[var(--scene-shadow)]"
+                style={{ height: barHeightPx, minHeight: eased > 0 ? 4 : 0 }}
               />
-              <div className="text-sm uppercase tracking-wider font-semibold opacity-80 mt-2 text-center whitespace-nowrap overflow-hidden text-ellipsis w-full px-1">{d.label}</div>
             </div>
           );
         })}
+      </div>
+      <div className="flex justify-between gap-4">
+        {data.map((d, i) => (
+          <div key={i} className="text-sm uppercase tracking-wider font-semibold opacity-80 text-center whitespace-nowrap overflow-hidden text-ellipsis flex-1 px-1">{d.label}</div>
+        ))}
       </div>
     </div>
   );

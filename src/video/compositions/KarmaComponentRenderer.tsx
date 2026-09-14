@@ -1,7 +1,9 @@
 import React from 'react';
-import { useCurrentFrame, useVideoConfig } from 'remotion';
 import type { Theme } from '../../theme/themes';
-import { KarmaHeading, KarmaParagraph, KarmaContainer, KarmaGrid, KarmaSplitLayout, KarmaArchitecturePipeline, KarmaCard, KarmaBadge, KarmaCodeBlock, KarmaText, KarmaBulletList, KarmaUmlClassNode, KarmaUmlActorNode, KarmaUmlUseCaseNode, KarmaUmlLifeline, KarmaUmlMessageArrow, KarmaUmlDecisionNode, KarmaUmlComponentNode, KarmaUmlPackageNode, KarmaUmlDatabaseNode, KarmaUmlNoteNode, KarmaFlowDiagram, KarmaFlowTerminalNode, KarmaFlowProcessNode, KarmaFlowIONode, KarmaFlowDocumentNode, KarmaUmlCloudNode, KarmaUmlDeploymentNode, KarmaUmlInterfaceNode, KarmaUmlSyncBarNode, KarmaMicroserviceNode, KarmaApiGatewayNode, KarmaMessageQueueNode, KarmaDockerNode, KarmaKubernetesNode, KarmaLoggingNode, KarmaBrowserNode, KarmaAwsNode, KarmaAzureNode, KarmaGcpNode, KarmaLanguageNode, KarmaConnector, KarmaSlideHeader, KarmaTerminalWindow, KarmaRoadmapTimeline, ThemeModeContext, KarmaBarChart, KarmaDonutChart, KarmaProgressBar, KarmaProfileCard } from '../../components/widgets/HtmlWidgets';
+import { TechTile, KarmaTechNode, KarmaTechStack, lookupTechIcon } from '../../components/widgets/TechIcon';
+import { assignWithFallback, type SceneComponent } from '../../catalogue/assign';
+import { lookupFrameComponent } from '../frames/registry';
+import { KarmaHeading, KarmaParagraph, KarmaContainer, KarmaGrid, KarmaSplitLayout, KarmaArchitecturePipeline, KarmaCard, KarmaBadge, KarmaCodeBlock, KarmaText, KarmaBulletList, KarmaUmlClassNode, KarmaUmlActorNode, KarmaUmlUseCaseNode, KarmaUmlLifeline, KarmaUmlMessageArrow, KarmaUmlDecisionNode, KarmaUmlComponentNode, KarmaUmlPackageNode, KarmaUmlDatabaseNode, KarmaUmlNoteNode, KarmaFlowDiagram, KarmaFlowTerminalNode, KarmaFlowProcessNode, KarmaFlowIONode, KarmaFlowDocumentNode, KarmaUmlCloudNode, KarmaUmlDeploymentNode, KarmaUmlInterfaceNode, KarmaUmlSyncBarNode, KarmaMicroserviceNode, KarmaApiGatewayNode, KarmaMessageQueueNode, KarmaDockerNode, KarmaKubernetesNode, KarmaLoggingNode, KarmaBrowserNode, KarmaAwsNode, KarmaAzureNode, KarmaGcpNode, KarmaLanguageNode, KarmaConnector, KarmaSlideHeader, KarmaRoadmapTimeline, ThemeModeContext, KarmaBarChart, KarmaDonutChart, KarmaProgressBar, KarmaProfileCard } from '../../components/widgets/HtmlWidgets';
 import { KarmaGraphScene } from './KarmaGraphScene';
 
 /** The exact layouts the video renderer implements (skill contract for the Script Agent). */
@@ -57,17 +59,43 @@ export function normalizeVideoLayout(layout: string | undefined): string {
   return 'standard-content';
 }
 
-/** Adaptive grid column count for feature-grid / card clusters based on component count. */
-function adaptiveGridCols(count: number): string {
-  if (count <= 1) return 'grid-cols-1';
-  if (count <= 3) return 'grid-cols-1 md:grid-cols-2';
-  if (count <= 6) return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
-  return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
-}
-
-export const renderComponent = (c: any, index: number) => {
+/** Renders one spec component to its widget. Wrapped below by the exported
+ *  `renderComponent` so every call site (including the recursive ones inside this
+ *  function) gets a `data-eid` hook for scripted highlights, at no layout cost. */
+const renderComponentRaw = (c: any, index: number): React.ReactElement | null => {
   const t = c.type ?? 'card';
   const delay = index * 5; // Staggered animation delay
+
+  // Technology marks. `tech-node` is the vendor-agnostic replacement for the
+  // per-vendor nodes; `data.tech` on ANY component promotes it to a branded node,
+  // so an existing api-gateway/microservice-node can carry the real Kong or Spring
+  // mark without the script changing component type.
+  if (t === 'tech-icon' || t === 'tech-node' || t === 'tech') {
+    const tech = c.data?.tech ?? c.data?.name ?? c.label ?? '';
+    if (!tech) return null;
+    if (t === 'tech-icon') {
+      return <TechTile key={index} tech={String(tech)} size={c.data?.size ?? 'lg'} animationDelay={delay} />;
+    }
+    return (
+      <KarmaTechNode key={index} tech={String(tech)} label={c.label} sublabel={c.sublabel || c.data?.sublabel}
+        size={c.data?.size ?? 'md'} animationDelay={delay} />
+    );
+  }
+
+  if (t === 'tech-stack') {
+    const items = (c.data?.items ?? c.items ?? []) as any[];
+    if (items.length > 0) {
+      return <KarmaTechStack key={index} items={items} size={c.data?.size ?? 'lg'}
+        showLabels={c.data?.showLabels !== false} animationDelay={delay} />;
+    }
+  }
+
+  if (c.data?.tech && lookupTechIcon(c.data.tech)) {
+    return (
+      <KarmaTechNode key={index} tech={String(c.data.tech)} label={c.label} sublabel={c.sublabel || c.data?.sublabel}
+        size={c.data?.size ?? 'md'} animationDelay={delay} />
+    );
+  }
 
   if (t === 'heading' || t === 'title') {
     return <KarmaHeading key={index} text={c.label || ''} animationDelay={delay} />;
@@ -85,6 +113,12 @@ export const renderComponent = (c: any, index: number) => {
     return <KarmaCodeBlock key={index} code={c.data?.text || ''} language={c.data?.lang || 'bash'} animationDelay={delay + 10} />;
   }
 
+  if (t === 'profile-card') {
+    return <KarmaProfileCard key={index} name={c.label || c.data?.name || ''} role={c.data?.role || c.sublabel || ''} avatarUrl={c.data?.avatar} animationDelay={delay} />;
+  }
+
+  // NOTE: must run before the generic `-card` catch-all below, which would otherwise
+  // swallow 'profile-card' first and render it without its avatar/role treatment.
   if (t === 'card' || t.includes('-card')) {
     const kind = t.replace('-card', '');
     const isWarning = kind === 'warning';
@@ -181,10 +215,6 @@ export const renderComponent = (c: any, index: number) => {
 
   if (t === 'progress' || t === 'progress-bar') {
     return <KarmaProgressBar key={index} label={c.label || ''} progress={c.data?.value || 0} color={c.data?.color} animationDelay={delay} />;
-  }
-
-  if (t === 'profile-card') {
-    return <KarmaProfileCard key={index} name={c.label || c.data?.name || ''} role={c.data?.role || c.sublabel || ''} avatarUrl={c.data?.avatar} animationDelay={delay} />;
   }
 
   if (t === 'badge') {
@@ -315,8 +345,97 @@ export const renderComponent = (c: any, index: number) => {
     return <KarmaConnector key={index} direction={c.data?.direction} type={c.data?.lineType} arrows={c.data?.arrows} length={c.data?.length} label={c.label} animationDelay={delay} />;
   }
 
+  if (t === 'table') {
+    const columns: { header?: string; cells?: string[] }[] = c.columns || [];
+    if (columns.length > 0) {
+      const rowCount = Math.max(...columns.map((col) => col.cells?.length ?? 0), 0);
+      return (
+        <div key={index} className="w-full overflow-hidden rounded-xl border" style={{ borderColor: 'var(--scene-border)' }}>
+          <table className="w-full text-left" style={{ borderCollapse: 'collapse' }}>
+            {columns.some((col) => col.header) && (
+              <thead>
+                <tr>
+                  {columns.map((col, ci) => (
+                    <th key={ci} className="px-5 py-3 text-lg font-bold" style={{ background: 'var(--scene-primary)', color: '#fff' }}>
+                      {col.header ?? ''}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+            )}
+            <tbody>
+              {Array.from({ length: rowCount }).map((_, ri) => (
+                <tr key={ri} style={{ borderTop: ri > 0 ? '1px solid var(--scene-border)' : undefined }}>
+                  {columns.map((col, ci) => (
+                    <td key={ci} className="px-5 py-3 text-lg" style={{ background: ri % 2 === 0 ? 'var(--scene-surface)' : 'transparent' }}>
+                      {col.cells?.[ri] ?? ''}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+    // No structured columns — fall through to the generic card so the label/items still render.
+  }
+
+  // --- Semantic fallback registry (§ Root Cause 1: nothing the LLM is told is valid
+  // may render as literally nothing). Each of these types is accepted by the backend
+  // validator/normalizer but has no dedicated widget — reroute to the closest existing
+  // one instead of vanishing. Re-dispatches through renderComponent so the target's
+  // own entrance animation, theming, and (once wrapped) data-eid highlight all apply. ---
+  const COMPONENT_TYPE_FALLBACKS: Record<string, string> = {
+    'command': 'code',
+    'comparison': 'card',
+    'banner': 'card',
+    'pillar': 'card',
+    'table': 'card', // structured columns handled above; this covers the no-columns case
+    'gauge': 'donut-chart',
+    'radar': 'donut-chart',
+    'pie-chart': 'donut-chart',
+    'line-chart': 'bar-chart',
+    'glass-container': 'container',
+    'gradient-container': 'container',
+    'shadow-container': 'container',
+    'outlined-container': 'container',
+    'timeline': 'roadmap-component',
+    'horizontal-timeline': 'roadmap-component',
+    'roadmap': 'roadmap-component',
+    'learning-path': 'roadmap-component',
+    'sprint': 'roadmap-component',
+  };
+  const mapped = COMPONENT_TYPE_FALLBACKS[t];
+  if (mapped === 'roadmap-component') {
+    const rawSteps: any[] = c.items || c.data?.items || [];
+    const steps = rawSteps.map((it: any, i: number) => ({
+      label: typeof it === 'string' ? it : (it.label ?? it.value ?? `Step ${i + 1}`),
+      status: (i === rawSteps.length - 1 ? 'active' : 'completed') as 'completed' | 'active' | 'pending',
+    }));
+    if (steps.length > 0) {
+      return <KarmaRoadmapTimeline key={index} steps={steps} animationDelay={delay} />;
+    }
+  } else if (mapped) {
+    return renderComponent({ ...c, type: mapped }, index);
+  }
+
   // Fallback for primitive rendering
   return null;
+};
+
+/** Renders a component and tags its root with `data-eid` (when it has an id) so
+ *  SceneVisual's per-frame effect can find and glow/ring it for a scripted
+ *  `animation.highlights` entry. `display: contents` keeps the wrapper invisible
+ *  to layout — it never affects flex/grid sizing of the wrapped widget. */
+export const renderComponent = (c: any, index: number): React.ReactElement | null => {
+  const node = renderComponentRaw(c, index);
+  if (node == null || !c?.id) return node;
+  return (
+    <div key={`eid-${index}`} data-eid={String(c.id)} style={{ display: 'contents' }}>
+      {node}
+    </div>
+  );
 };
 
 /** True when a component is a redundant copy of the slide's title/subtitle, which the
@@ -350,122 +469,34 @@ const KarmaComponentRendererInner: React.FC<{ spec: any, animationDelayOverride?
   const layout = normalizeVideoLayout(spec.layout);
   const components = (spec.components || []).filter((c: any) => !isTitleOrSubtitleDuplicate(c, spec));
 
-  // Helper to split components smartly if needed
-  const textComponents = components.filter((c: any) => c.type === 'heading' || c.type === 'paragraph' || c.type === 'title' || c.type === 'text');
-  const mediaComponents = components.filter((c: any) => c.type !== 'heading' && c.type !== 'paragraph' && c.type !== 'title' && c.type !== 'text');
+  // Registry dispatch (strangler-fig): frames migrated to the catalogue slot contract
+  // are resolved here; everything else falls through to the legacy if-chain below.
+  // assignWithFallback walks the declared fallback chain, so a frame whose contract
+  // cannot be satisfied (a two-column scene with no narrative content, say) degrades
+  // instead of rendering an empty column.
+  const assignment = assignWithFallback(layout, components);
+  const RegisteredFrame = lookupFrameComponent(assignment.frame);
+  if (RegisteredFrame) {
+    return (
+      <RegisteredFrame
+        spec={spec}
+        slots={assignment.slots}
+        theme={theme}
+        render={(c: SceneComponent, i: number) => renderComponent(c, i)}
+      />
+    );
+  }
+
+  // The blind text/media split that used to live here (heading/paragraph/title/text
+  // vs "everything else") is gone — two-column, comparison, and split-image are now
+  // registered frames (src/video/frames/) that get their content pre-sorted into
+  // named slots by assignSlots, based on what each component actually IS, not a
+  // two-bucket type guess. That guess is what misfiled bullet-list as "media" and
+  // let one component leave a whole column empty (see catalogue/frames.ts defects).
   
-  // 1. title-slide
-  if (layout === 'title-slide') {
-    // Hero slide: the title/subtitle ARE the heading. Drop heading/title components so
-    // the slide can never show a second/duplicated title (spec.title renders it once).
-    const heroComponents = components.filter((c: any) => c.type !== 'heading' && c.type !== 'title');
-    return (
-      <div className="w-full h-full p-20 flex flex-col justify-center items-center text-center z-10 relative">
-        <div className="max-w-5xl space-y-8 flex flex-col items-center">
-          {spec.title && <KarmaHeading text={spec.title} level={1} animationDelay={0} />}
-          {spec.subtitle && <KarmaParagraph text={spec.subtitle} animationDelay={2} className="mt-4" />}
-          {heroComponents.map((c: any, i: number) => renderComponent(c, i))}
-        </div>
-      </div>
-    );
-  }
-
-  // 2. section-header
-  if (layout === 'section-header') {
-    return (
-      <div className="w-full h-full bg-[var(--scene-surface)]/50 p-20 flex flex-col justify-center items-start border-l-8 border-[var(--scene-primary)] z-10 relative pl-32">
-        <KarmaSlideHeader title={spec.title} subtitle={spec.subtitle} className="!border-b-0 mb-4" />
-        <div className="max-w-4xl space-y-6">
-          {components.map((c: any, i: number) => renderComponent(c, i))}
-        </div>
-      </div>
-    );
-  }
-
-  // 10. quote
-  if (layout === 'quote') {
-    return (
-      <div className="w-full h-full p-24 flex flex-col justify-center items-center text-center z-10 relative">
-        <div className="text-8xl text-[var(--scene-primary)] opacity-30 mb-4 font-serif">"</div>
-        <div className="max-w-5xl">
-          {components.map((c: any, i: number) => renderComponent(c, i))}
-        </div>
-      </div>
-    );
-  }
-
-  // 11. code-explainer
-  if (layout === 'code-explainer') {
-    const codeComponents = components.filter((c: any) => c.type === 'code');
-    const explanationComponents = components.filter((c: any) => c.type !== 'code');
-    return (
-      <div className="w-full h-full p-16 flex items-center justify-center z-10 relative">
-        <KarmaSplitLayout 
-          leftRatio={2} rightRatio={3}
-          left={
-            <div className="pr-12">
-              <KarmaSlideHeader title={spec.title} subtitle={spec.subtitle} />
-              {explanationComponents.map((c: any, i: number) => renderComponent(c, i))}
-            </div>
-          }
-          right={
-            // FIX: Use flex column so code fills all available height, never clips
-            <div className="w-full h-full shadow-2xl rounded-xl overflow-hidden border border-[var(--scene-border)] bg-[#0d1117] flex flex-col">
-              {/* macOS-style window chrome */}
-              <div className="shrink-0 bg-[#161b22] px-4 py-3 flex items-center gap-2 border-b border-[#30363d]">
-                <div className="w-3 h-3 rounded-full bg-rose-500"></div>
-                <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-                <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                {spec.title && (
-                  <span className="ml-2 text-xs text-[#8b949e] truncate font-mono">{spec.title}</span>
-                )}
-              </div>
-              {/* Code area: flex-1 + min-h-0 ensures it fills remaining height without fixed px */}
-              <div className="flex-1 min-h-0 overflow-auto p-6 text-[13px] leading-relaxed">
-                {codeComponents.map((c: any, i: number) => renderComponent(c, i))}
-              </div>
-            </div>
-          }
-          className="w-full h-full max-w-[1600px]"
-        />
-      </div>
-    );
-  }
-
-  // 12. terminal-walkthrough
-  if (layout === 'terminal-walkthrough') {
-    const commands = components.map((c: any) => ({
-      text: c.data?.body || c.data?.text || c.label || '',
-      type: (c.type === 'code' || c.type === 'command') ? 'command' : 'output' as any
-    }));
-    return (
-      <div className="w-full h-full p-16 flex flex-col justify-center items-center z-10 relative">
-        <KarmaSlideHeader title={spec.title} subtitle={spec.subtitle} className="w-full max-w-[1600px]" />
-        <div className="w-full max-w-[1600px] flex-grow pb-12">
-           <KarmaTerminalWindow commands={commands} />
-        </div>
-      </div>
-    );
-  }
-
-  // 13. roadmap-timeline
-  if (layout === 'roadmap-timeline') {
-    const steps = components.map((c: any, index: number) => {
-       const explicit = c.data?.status || c.status;
-       let status = explicit === 'completed' || explicit === 'active' || explicit === 'pending'
-         ? explicit
-         : index === 0 ? 'completed' : index === 1 ? 'active' : 'pending';
-       return { label: c.label || c.data?.body || 'Step', status: status as any };
-    });
-    return (
-      <div className="w-full h-full p-16 flex flex-col z-10 relative">
-        <KarmaSlideHeader title={spec.title} subtitle={spec.subtitle} />
-        <div className="flex-grow w-full flex items-center justify-center">
-           <KarmaRoadmapTimeline steps={steps} className="w-full max-w-[1400px]" />
-        </div>
-      </div>
-    );
-  }
+  // title-slide, section-header, quote, code-explainer, terminal-walkthrough, and
+  // roadmap-timeline are now registered frames (src/video/frames/) — resolved by the
+  // registry dispatch above this switch, never reach here.
 
   // Graph layouts (flow/uml/architecture + the video "architecture-diagram") use the
   // shared ELK engine: absolute coordinates for nodes + real arrow rendering.
@@ -509,141 +540,15 @@ const KarmaComponentRendererInner: React.FC<{ spec: any, animationDelayOverride?
     );
   }
 
-  // ALL OTHER STANDARD SLIDES (Require Header)
+  // Unreachable safety net, kept only because TS requires an explicit return here.
+  // normalizeVideoLayout() always returns one of the 16 known layout strings (its own
+  // fallback for anything unrecognized IS "standard-content"), GRAPH_VIDEO_LAYOUTS
+  // returns above for the ELK-based layouts, and every remaining layout — including
+  // standard-content itself — is now a registered frame in src/video/frames/ that
+  // returns above that. No layout value can fall through to here.
   return (
     <div className="w-full h-full p-16 flex flex-col z-10 relative">
       <KarmaSlideHeader title={spec.title} subtitle={spec.subtitle} />
-      
-      <div className="flex-grow w-full flex relative">
-        
-        {/* 3. standard-content */}
-        {layout === 'standard-content' && (
-          <div className="w-full max-w-5xl flex flex-col gap-6">
-            {components.map((c: any, i: number) => renderComponent(c, i))}
-          </div>
-        )}
-
-        {/* 4. two-column & 9. comparison */}
-        {(layout === 'two-column' || layout === 'comparison') && (
-          <KarmaSplitLayout 
-            leftRatio={1} rightRatio={1}
-            left={textComponents.map((c: any, i: number) => renderComponent(c, i))}
-            right={mediaComponents.map((c: any, i: number) => renderComponent(c, i))}
-            className="w-full h-full max-w-[1600px] mx-auto"
-          />
-        )}
-
-        {/* 5. split-image */}
-        {layout === 'split-image' && (
-          <KarmaSplitLayout 
-            leftRatio={2} rightRatio={3}
-            left={textComponents.map((c: any, i: number) => renderComponent(c, i))}
-            right={mediaComponents.map((c: any, i: number) => renderComponent(c, i))}
-            className="w-full h-full max-w-[1600px] mx-auto"
-          />
-        )}
-
-        {/* 7. feature-grid (adaptive columns by count, honors explicit data.order) */}
-        {layout === 'feature-grid' && (
-          <div className={`grid ${adaptiveGridCols(components.length)} gap-8 w-full max-w-[1600px] mx-auto auto-rows-fr`}>
-            {[...components]
-              .sort((a: any, b: any) => {
-                const ao = a.data?.order ?? Number.MAX_SAFE_INTEGER;
-                const bo = b.data?.order ?? Number.MAX_SAFE_INTEGER;
-                return ao - bo;
-              })
-              .map((c: any, i: number) => renderComponent(c, i))}
-          </div>
-        )}
-
-        {/* 8. big-number — animated counter from 0 to target value */}
-        {layout === 'big-number' && (() => {
-          const frame = useCurrentFrame();
-          const { durationInFrames, fps } = useVideoConfig();
-          const rawValue = components[0]?.data?.value || components[0]?.label || '0';
-          const numericMatch = String(rawValue).match(/^([\d,\.]+)(.*)$/);
-          // Animate: count from 0 to target over the first 60% of scene
-          const countFrames = Math.floor(durationInFrames * 0.6);
-          const progress = Math.min(1, frame / Math.max(1, countFrames));
-          // Ease-out cubic for natural deceleration
-          const eased = 1 - Math.pow(1 - progress, 3);
-          let displayValue: string;
-          if (numericMatch) {
-            const target = parseFloat(numericMatch[1].replace(/,/g, ''));
-            const suffix = numericMatch[2] || '';
-            const current = Math.floor(target * eased);
-            // Restore thousands separator if original had one
-            const formatted = rawValue.includes(',') ? current.toLocaleString() : String(current);
-            displayValue = formatted + suffix;
-          } else {
-            displayValue = rawValue;
-          }
-          return (
-            <div className="w-full h-full flex flex-col items-center justify-center" style={{ opacity: Math.min(1, eased + 0.1) }}>
-              <div
-                className="font-black text-transparent bg-clip-text bg-gradient-to-br from-[var(--scene-primary)] to-[var(--scene-accent)] leading-none tabular-nums"
-                style={{ fontFamily: "var(--scene-heading)", fontSize: 'clamp(80px, 18vw, 200px)' }}
-              >
-                {displayValue}
-              </div>
-              {components[1] && <div className="mt-8">{renderComponent(components[1], 1)}</div>}
-            </div>
-          );
-        })()}
-
-        {/* 14. bento (Modern asymmetric grid) */}
-        {layout === 'bento' && (
-          <div className="grid grid-cols-4 grid-rows-3 gap-6 w-full max-w-[1600px] mx-auto h-[600px]">
-            {components.map((c: any, i: number) => {
-              // Create an asymmetric grid structure for bento boxes
-              let spanClass = "col-span-1 row-span-1";
-              if (i === 0) spanClass = "col-span-2 row-span-2";
-              else if (i === 1) spanClass = "col-span-2 row-span-1";
-              else if (i === 2) spanClass = "col-span-1 row-span-2";
-              return (
-                <div key={i} className={`${spanClass} flex`}>
-                  {renderComponent(c, i)}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* 15. dashboard (Sidebar + Main content layout) */}
-        {layout === 'dashboard' && (
-          <div className="flex gap-8 w-full max-w-[1600px] mx-auto h-full pb-8">
-            <div className="w-1/4 h-full bg-[var(--scene-surface)]/40 rounded-xl border border-[var(--scene-border)] p-6 flex flex-col gap-4 shadow-lg">
-              {components.filter((_: any, i: number) => i % 3 === 0).map((c: any, i: number) => renderComponent(c, i))}
-            </div>
-            <div className="w-3/4 flex flex-col gap-6">
-              <div className="grid grid-cols-2 gap-6">
-                {components.filter((_: any, i: number) => i % 3 !== 0 && i < 3).map((c: any, i: number) => renderComponent(c, i))}
-              </div>
-              <div className="flex-1 bg-[var(--scene-surface)]/20 rounded-xl border border-[var(--scene-border)] p-8">
-                {components.filter((_: any, i: number) => i % 3 !== 0 && i >= 3).map((c: any, i: number) => renderComponent(c, i))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 16. infographic (Vertical flow) */}
-        {layout === 'infographic' && (
-          <div className="w-full max-w-4xl mx-auto flex flex-col items-center pb-16">
-            {components.map((c: any, i: number) => (
-              <div key={i} className="flex flex-col items-center w-full">
-                {i > 0 && <div className="w-1 h-12 bg-gradient-to-b from-[var(--scene-primary)] to-[var(--scene-accent)] my-4 opacity-50"></div>}
-                <div className="w-full bg-[var(--scene-surface)]/80 p-8 rounded-2xl border border-[var(--scene-border)] shadow-xl relative">
-                   <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-[var(--scene-primary)] text-white flex items-center justify-center font-bold text-xl shadow-lg border-4 border-[var(--scene-bg)]">
-                     {i + 1}
-                   </div>
-                   {renderComponent(c, i)}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-      </div>
     </div>
   );
 };

@@ -127,9 +127,24 @@ export function renderArrow(input: ArrowRenderInput, markerIdBase: string, theme
   if (input.label && input.label.trim()) {
     const pos = labelPosition(input.points);
     const haloId = `halo-${markerIdBase}`;
+    // A wider halo alone isn't enough: two closely-placed nodes only have so much gap
+    // between them, and a long label (however well the halo fits it) still spills into
+    // whichever node sits nearest. Budget the label to a fraction of the connector's
+    // own length — the space it's actually sitting in — and ellipsize past that, same
+    // trade-off any UI makes for a label that doesn't fit its slot.
+    const dx = input.points[input.points.length - 1].x - input.points[0].x;
+    const dy = input.points[input.points.length - 1].y - input.points[0].y;
+    const connectorLength = Math.hypot(dx, dy);
+    const CHAR_WIDTH = 8.2;
+    const HALO_PADDING = 24;
+    const maxHaloWidth = Math.max(60, Math.min(260, connectorLength * 0.85));
+    const maxChars = Math.max(3, Math.floor((maxHaloWidth - HALO_PADDING) / CHAR_WIDTH));
+    const raw = input.label.trim();
+    const label = raw.length > maxChars ? raw.slice(0, Math.max(1, maxChars - 1)) + "…" : raw;
+    const haloWidth = Math.max(80, Math.min(maxHaloWidth, Math.round(label.length * CHAR_WIDTH) + HALO_PADDING));
     labelMarkup =
-      `<g id="${haloId}"><rect x="${pos.x - 40}" y="${pos.y - 18}" width="80" height="30" rx="8" fill="${theme.surface}" stroke="${theme.border}" stroke-width="1" opacity="0.95"/>` +
-      `<text x="${pos.x}" y="${pos.y + 4}" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="600" fill="${theme.text}">${escapeXml(input.label)}</text></g>`;
+      `<g id="${haloId}"><rect x="${pos.x - haloWidth / 2}" y="${pos.y - 18}" width="${haloWidth}" height="30" rx="8" fill="${theme.surface}" stroke="${theme.border}" stroke-width="1" opacity="0.95"/>` +
+      `<text x="${pos.x}" y="${pos.y + 4}" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="600" fill="${theme.text}">${escapeXml(label)}</text></g>`;
   }
 
   const defs = isDouble ? "" : `<defs>${markerDefs(markerId, color, kind)}</defs>`;
@@ -137,7 +152,7 @@ export function renderArrow(input: ArrowRenderInput, markerIdBase: string, theme
   return (
     `<g>` +
     defs +
-    `<path d="${path}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"${dash}${headPart}${tailMarker}/>` +
+    `<path data-connection="${markerIdBase}" d="${path}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"${dash}${headPart}${tailMarker}/>` +
     labelMarkup +
     `</g>`
   );

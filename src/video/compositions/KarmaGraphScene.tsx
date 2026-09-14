@@ -7,7 +7,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { continueRender, delayRender } from "remotion";
+import { continueRender, delayRender, useVideoConfig } from "remotion";
 import type { Theme } from "../../theme/themes";
 import { getTheme } from "../../theme/themes";
 import { layoutGraph, type GraphLayoutResult } from "../../layout/layout";
@@ -49,6 +49,32 @@ interface GraphSceneInput {
 interface GraphSceneProps {
   spec: any;
   theme?: Theme;
+}
+
+/**
+ * Picks a layout direction instead of always going top-to-bottom. A simple chain
+ * (every node has at most one incoming and one outgoing edge, nothing branches, no
+ * containers) reads naturally left-to-right and — just as importantly — actually
+ * uses a 16:9 frame's width; laid out DOWN it becomes a tall, narrow strip stranded
+ * in a mostly-empty canvas. Anything with branching or grouping (a real hierarchy,
+ * fan-out/fan-in) keeps the DOWN layout, which reads better for that shape.
+ */
+function graphDirection(
+  components: GraphNodeInput[],
+  connections: GraphEdgeInput[],
+  containers: GraphContainerInput[],
+): "DOWN" | "RIGHT" {
+  if (containers.length > 0 || connections.length === 0) return "DOWN";
+  const outDegree = new Map<string, number>();
+  const inDegree = new Map<string, number>();
+  for (const e of connections) {
+    outDegree.set(e.from, (outDegree.get(e.from) ?? 0) + 1);
+    inDegree.set(e.to, (inDegree.get(e.to) ?? 0) + 1);
+  }
+  const isChain = components.every(
+    (c) => (outDegree.get(c.id) ?? 0) <= 1 && (inDegree.get(c.id) ?? 0) <= 1,
+  );
+  return isChain ? "RIGHT" : "DOWN";
 }
 
 function buildGraphInput(spec: any): GraphSceneInput {
@@ -126,10 +152,17 @@ function buildArrowLayer(input: GraphSceneInput, laid: GraphLayoutResult, theme:
 export const KarmaGraphScene: React.FC<GraphSceneProps> = ({ spec, theme }) => {
   const activeTheme = theme ?? getTheme(spec.theme);
   const input = useMemo(() => buildGraphInput(spec), [spec]);
+  const { width: videoWidth, height: videoHeight } = useVideoConfig();
   const wrapRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState<{ width: number; height: number } | null>(null);
   const [laid, setLaid] = useState<GraphLayoutResult | null>(null);
-  const [handle] = useState(() => delayRender("graph-layout"));
+  // 20s timeout: some headless Chromium configurations never fire a ResizeObserver
+  // callback with a nonzero size for this element (confirmed in the containerized
+  // Remotion renderer, even though the same code measures fine on a host browser).
+  // Without a bound here, the delayRender() below is never released and the ENTIRE
+  // render hangs indefinitely with zero progress and no error — this turns that into
+  // a fast, loud failure instead, and the fallback box below usually avoids it entirely.
+  const [handle] = useState(() => delayRender("graph-layout", { timeoutInMilliseconds: 20000 }));
   const released = useRef(false);
   const release = () => {
     if (!released.current) {
@@ -153,7 +186,21 @@ export const KarmaGraphScene: React.FC<GraphSceneProps> = ({ spec, theme }) => {
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
-    return () => ro.disconnect();
+    // Fallback: if neither the synchronous check above nor the observer ever reports
+    // a real size within 1.5s, fall back to the element's own client box, and failing
+    // that the composition's own dimensions — always unblocks the layout effect below.
+    const fallbackTimer = window.setTimeout(() => {
+      setBox((prev) => {
+        if (prev) return prev;
+        const w = el.clientWidth || videoWidth;
+        const h = el.clientHeight || Math.round(videoHeight * 0.7);
+        return { width: w, height: h };
+      });
+    }, 1500);
+    return () => {
+      ro.disconnect();
+      window.clearTimeout(fallbackTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -165,7 +212,7 @@ export const KarmaGraphScene: React.FC<GraphSceneProps> = ({ spec, theme }) => {
       input.containers as any,
       box.width,
       box.height,
-      "DOWN",
+      graphDirection(input.components, input.connections, input.containers),
       "layered",
       GRAPH_PADDING,
     )
@@ -196,14 +243,44 @@ export const KarmaGraphScene: React.FC<GraphSceneProps> = ({ spec, theme }) => {
 
   const arrowSvg = laid && box ? buildArrowLayer(input, laid, activeTheme) : "";
 
+  // ELK lays out nodes at their fixed pixel sizes (e.g. 200x120 for a microservice-node)
+  // with no awareness of the actual canvas — a small graph (2-4 nodes) previously
+  // rendered at that natural size and just sat centered in a mostly-empty frame. This
+  // scales the whole laid-out graph up (or down, for an unusually large one) to make
+  // good use of the measured box, capped so a trivial 2-node graph doesn't blow up to
+  // an illegible, oversized diagram.
+  const MAX_GRAPH_SCALE = 1.8;
+  const fit = laid && box
+    ? (() => {
+        const graphW = Math.max(1, laid.width);
+        const graphH = Math.max(1, laid.height);
+        const scale = Math.min(box.width / graphW, box.height / graphH, MAX_GRAPH_SCALE);
+        return {
+          scale,
+          offsetX: (box.width - graphW * scale) / 2,
+          offsetY: (box.height - graphH * scale) / 2,
+        };
+      })()
+    : null;
+
   return (
     <div ref={wrapRef} className="relative w-full h-full overflow-hidden" style={{ zIndex: 1 }}>
-      {laid && box ? (
-        <>
+      {laid && box && fit ? (
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: laid.width,
+            height: laid.height,
+            transform: `translate(${fit.offsetX}px, ${fit.offsetY}px) scale(${fit.scale})`,
+            transformOrigin: "0 0",
+          }}
+        >
           <svg
-            width={box.width}
-            height={box.height}
-            viewBox={`0 0 ${box.width} ${box.height}`}
+            width={laid.width}
+            height={laid.height}
+            viewBox={`0 0 ${laid.width} ${laid.height}`}
             xmlns="http://www.w3.org/2000/svg"
             style={{ position: "absolute", left: 0, top: 0, zIndex: 1, pointerEvents: "none" }}
           >
@@ -250,7 +327,7 @@ export const KarmaGraphScene: React.FC<GraphSceneProps> = ({ spec, theme }) => {
               </div>
             );
           })}
-        </>
+        </div>
       ) : null}
     </div>
   );
