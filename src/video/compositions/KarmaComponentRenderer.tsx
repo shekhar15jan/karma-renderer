@@ -501,7 +501,8 @@ const KarmaComponentRendererInner: React.FC<{ spec: any, animationDelayOverride?
   // assignWithFallback walks the declared fallback chain, so a frame whose contract
   // cannot be satisfied (a two-column scene with no narrative content, say) degrades
   // instead of rendering an empty column.
-  const assignment = assignWithFallback(layout, components);
+  // Diagrams draw every node through the graph engine below, whatever the slot contract counts.
+  const assignment = assignWithFallback(layout, components, 4, !GRAPH_VIDEO_LAYOUTS.has(layout));
   const RegisteredFrame = lookupFrameComponent(assignment.frame);
   if (RegisteredFrame) {
     return (

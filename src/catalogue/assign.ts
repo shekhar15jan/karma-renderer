@@ -170,25 +170,37 @@ export function assignSlots(frameId: string, components: SceneComponent[]): Assi
 }
 
 /**
- * Assigns against a frame, walking the declared fallback chain when the contract
- * cannot be met. Returns the first frame that fits, so "two-column with one
- * component" resolves to standard-content instead of rendering an empty column.
+ * Assigns against a frame, walking the declared fallback chain when the contract cannot
+ * be met or when the frame would drop components. Dropping was silent: a title-slide
+ * takes at most two prose/metric/callout items, so a hook's "504 Gateway Timeout" badge
+ * and Redis logo vanished while the narration talked about them. Content the script put
+ * on screen outranks the layout it asked for, so the first frame in the chain that keeps
+ * everything wins; otherwise the satisfied frame that drops the least.
+ * Pass fallBackOnDrops=false for frames that draw every component regardless of slots
+ * (the ELK diagram engine), so they only fall back when the contract cannot be met.
  */
-export function assignWithFallback(frameId: string, components: SceneComponent[], maxHops = 4) {
+export function assignWithFallback(frameId: string, components: SceneComponent[], maxHops = 4, fallBackOnDrops = true) {
   const tried: string[] = [];
   let current: string | null = frameId;
+  let best: Assignment | null = null;
   let last: Assignment | null = null;
 
   for (let i = 0; i < maxHops && current; i++) {
     tried.push(current);
     const a = assignSlots(current, components);
     last = a;
-    if (!a.unsatisfied) return { ...a, tried };
+    if (!a.unsatisfied && (a.dropped.length === 0 || !fallBackOnDrops)) return { ...a, tried };
+    if (!a.unsatisfied && (!best || a.dropped.length < best.dropped.length)) best = a;
     const f = lookupFrame(current);
     current = f?.fallback ?? null;
     if (current && tried.includes(current)) break;
   }
-  return { ...(last as Assignment), tried };
+  const chosen = best ?? (last as Assignment);
+  if (chosen.dropped.length > 0) {
+    console.warn(`[assign] ${chosen.frame} drops ${chosen.dropped.length} component(s): ` +
+      chosen.dropped.map((d) => `${d.component.id ?? d.component.type} (${d.why})`).join("; "));
+  }
+  return { ...chosen, tried };
 }
 
 export type { WidgetDef };
