@@ -29,7 +29,6 @@ const PRESETS: Record<string, React.CSSProperties> = {
     background: "rgba(0,0,0,0.6)",
     borderRadius: "8px",
     padding: "8px 16px",
-    backdropFilter: "blur(4px)",
   },
   clean: {
     fontFamily: "Inter, system-ui, sans-serif",

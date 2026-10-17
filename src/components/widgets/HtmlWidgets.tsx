@@ -95,7 +95,7 @@ export const KarmaContainer: React.FC<{ children: React.ReactNode, variant?: 'gl
 
   const variants = {
     transparent: "",
-    glass: "bg-[var(--scene-surface)]/70 border border-[var(--scene-border)] backdrop-blur-2xl shadow-[var(--scene-shadow)]",
+    glass: "bg-[var(--scene-surface)]/70 border border-[var(--scene-border)] shadow-[var(--scene-shadow)]",
     solid: "bg-[var(--scene-surface)] border border-[var(--scene-border)] shadow-[var(--scene-shadow)]",
   };
 
@@ -184,7 +184,7 @@ export const KarmaTerminalWindow: React.FC<{ commands: { text: string, type: 'co
   let charsRendered = 0;
 
   return (
-    <div className={`w-full h-full bg-[var(--scene-surface)]/80 border border-[var(--scene-border)] rounded-xl flex flex-col overflow-hidden shadow-[var(--scene-shadow)] backdrop-blur-2xl ${className}`} style={{ opacity, transform: `scale(${scale})` }}>
+    <div className={`w-full h-full bg-[var(--scene-surface)]/80 border border-[var(--scene-border)] rounded-xl flex flex-col overflow-hidden shadow-[var(--scene-shadow)] ${className}`} style={{ opacity, transform: `scale(${scale})` }}>
       <div className="bg-[var(--scene-border)]/50 px-6 py-4 flex items-center justify-between border-b border-[var(--scene-border)]">
         <div className="text-sm text-[var(--scene-muted)] font-mono">user@server:~</div>
       </div>
@@ -262,7 +262,7 @@ export const KarmaCard: React.FC<{ children: React.ReactNode, color?: 'slate' | 
   };
 
   return (
-    <div className={`relative p-8 rounded-[var(--scene-radius)] border backdrop-blur-2xl shadow-[var(--scene-shadow)] flex flex-col ${colors[color]} ${className}`} style={{ opacity, transform: `scale(${scale})` }}>
+    <div className={`relative p-8 rounded-[var(--scene-radius)] border shadow-[var(--scene-shadow)] flex flex-col ${colors[color]} ${className}`} style={{ opacity, transform: `scale(${scale})` }}>
       {children}
     </div>
   );
@@ -292,7 +292,7 @@ export const KarmaCodeBlock: React.FC<{ code: string, language?: string, animati
   const viewportScale = useViewportScale();
 
   return (
-    <div className={`rounded-2xl overflow-hidden shadow-2xl shadow-indigo-500/10 border border-slate-700 bg-[#1e1e1e]/95 backdrop-blur-md w-full flex flex-col ${className}`} style={{ opacity, transform: `translateY(${y}px)` }}>
+    <div className={`rounded-2xl overflow-hidden shadow-2xl shadow-indigo-500/10 border border-slate-700 bg-[#1e1e1e]/95 w-full flex flex-col ${className}`} style={{ opacity, transform: `translateY(${y}px)` }}>
       <div className="bg-slate-900 px-6 py-4 flex items-center space-x-3 border-b border-slate-700/80">
         <div className="w-3.5 h-3.5 rounded-full bg-red-500"></div>
         <div className="w-3.5 h-3.5 rounded-full bg-yellow-500"></div>
@@ -567,7 +567,7 @@ export const KarmaUmlDeploymentNode: React.FC<{ label: string, animationDelay?: 
         <polygon points="0,25 50,50 50,100 0,75" fill="rgba(148, 163, 184, 0.1)" stroke="currentColor" strokeWidth="2" />
         <polygon points="50,50 100,25 100,75 50,100" fill="rgba(148, 163, 184, 0.3)" stroke="currentColor" strokeWidth="2" />
       </svg>
-      <div className="z-10 text-slate-200 font-bold bg-slate-900/50 px-3 py-1 rounded backdrop-blur-sm mt-8 border border-slate-700/50 shadow-lg text-sm text-center">
+      <div className="z-10 text-slate-200 font-bold bg-slate-900/50 px-3 py-1 rounded mt-8 border border-slate-700/50 shadow-lg text-sm text-center">
         &laquo;device&raquo;<br />{label}
       </div>
     </div>
@@ -580,7 +580,7 @@ export const KarmaUmlInterfaceNode: React.FC<{ label: string, animationDelay?: n
     <div className={`flex items-center ${className}`} style={{ opacity, transform: `scale(${scale})` }}>
       <div className="w-12 h-1 bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]"></div>
       <div className="w-8 h-8 rounded-full border-4 border-indigo-500 bg-slate-900 shadow-[0_0_15px_rgba(99,102,241,0.5)] z-10"></div>
-      <span className="ml-3 font-bold text-indigo-300 bg-slate-900/50 px-2 py-1 rounded backdrop-blur-sm text-sm">{label}</span>
+      <span className="ml-3 font-bold text-indigo-300 bg-slate-900/50 px-2 py-1 rounded text-sm">{label}</span>
     </div>
   );
 };

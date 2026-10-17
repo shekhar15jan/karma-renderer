@@ -11,7 +11,6 @@ export const MobileApp: React.FC<{ highlightPay?: boolean; tapped?: boolean; sca
         height: 520,
         borderRadius: 36,
         background: "rgba(15,23,42,0.6)",
-        backdropFilter: "blur(16px)",
         border: "1px solid rgba(255,255,255,0.15)",
         boxShadow: `0 20px 60px rgba(0,0,0,0.6), inset 0 0 20px rgba(255,255,255,0.05), ${highlightPay ? `0 0 30px rgba(6,182,212,${0.3 + pulse * 0.3})` : ""}`,
         display: "flex",

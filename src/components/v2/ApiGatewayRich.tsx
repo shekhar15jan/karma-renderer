@@ -13,7 +13,6 @@ export const ApiGatewayRich: React.FC<{ stage: number; highlight?: boolean }> = 
         width: 320,
         borderRadius: 20,
         background: "rgba(255,255,255,0.04)",
-        backdropFilter: "blur(12px)",
         border: `1px solid ${highlight ? "rgba(139,92,246,0.6)" : "rgba(255,255,255,0.12)"}`,
         boxShadow: highlight
           ? "0 20px 50px rgba(139,92,246,0.25), 0 0 0 1px rgba(139,92,246,0.15), 0 0 30px rgba(139,92,246,0.2)"

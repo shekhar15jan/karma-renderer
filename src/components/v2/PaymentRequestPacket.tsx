@@ -42,7 +42,6 @@ export const PaymentRequestPacket: React.FC<{ progress: number; visible: boolean
       <div
         style={{
           background: "rgba(255,255,255,0.08)",
-          backdropFilter: "blur(8px)",
           color: "#fff",
           fontSize: 10,
           fontWeight: 800,

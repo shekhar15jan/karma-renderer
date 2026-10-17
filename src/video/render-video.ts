@@ -17,6 +17,17 @@ const COMPOSITION_ID = "karma-video";
  * Optional Chrome/Chromium binary (REMOTION_BROWSER_EXECUTABLE). Without it Remotion downloads
  * its headless shell on first render, which fails on hosts without access to remotion.media.
  */
+/**
+ * Chromium GL backend. "angle" uses the GPU when one is available and falls back to software
+ * otherwise; the previous hard-coded "swangle" forced software rendering everywhere, which made
+ * renders ~2x slower even without a GPU (measured: 60 frames 25.7s -> 12.2s, identical output).
+ * Override with REMOTION_GL (e.g. "swangle" for hosts where ANGLE misbehaves).
+ */
+function glMode(): "angle" | "swangle" | "swiftshader" | "egl" | "vulkan" | "angle-egl" {
+  const value = process.env.REMOTION_GL?.trim();
+  return (value || "angle") as "angle" | "swangle" | "swiftshader" | "egl" | "vulkan" | "angle-egl";
+}
+
 function browserExecutable(): string | undefined {
   const value = process.env.REMOTION_BROWSER_EXECUTABLE?.trim();
   return value ? value : undefined;
@@ -226,7 +237,7 @@ export async function renderVideoBuffer(request: ValidatedVideoRequest): Promise
         jpegQuality,
         pixelFormat: "yuv420p",
         scale: outputScale,
-        chromiumOptions: { gl: "swangle" },
+        chromiumOptions: { gl: glMode() },
         browserExecutable: browserExecutable(),
         logLevel: "error",
         onProgress: (p) => {
@@ -854,7 +865,7 @@ export async function renderHybridSlideVideo(request: ValidatedVideoRequest): Pr
   // existing instance — at several bursts per scene * 22 scenes, that relaunch
   // overhead alone could outweigh the frames saved by not rendering the held gaps.
   // One browser, reused for every call below, keeps that overhead to a single launch.
-  const browser = await openBrowser("chrome", { chromiumOptions: { gl: "swangle" }, browserExecutable: browserExecutable() });
+  const browser = await openBrowser("chrome", { chromiumOptions: { gl: glMode() }, browserExecutable: browserExecutable() });
   try {
     const ffmpeg = resolveFfmpeg();
     const concurrency = resolveConcurrency();
@@ -958,7 +969,7 @@ export async function renderHybridSlideVideo(request: ValidatedVideoRequest): Pr
             crf: 18,
             pixelFormat: "yuv420p",
             scale: 1,
-            chromiumOptions: { gl: "swangle" },
+            chromiumOptions: { gl: glMode() },
             browserExecutable: browserExecutable(),
             logLevel: "error",
             frameRange: [fromFrame, toFrame],
@@ -1204,7 +1215,7 @@ export async function renderThumbnailBuffer(request: ThumbnailRequest): Promise<
       output: outputLocation,
       inputProps,
       imageFormat: "png",
-      chromiumOptions: { gl: "swangle" },
+      chromiumOptions: { gl: glMode() },
       browserExecutable: browserExecutable(),
       logLevel: "error",
     });
