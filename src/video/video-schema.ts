@@ -53,6 +53,9 @@ const sceneSchema = z.object({
   captions: z.array(captionCueSchema).optional(),
   /** Spoken narration text; used to auto-generate captions when `captions` is absent. */
   narration: z.string().optional(),
+  /** When each narration word is spoken (seconds into `audio`), from the voice provider.
+   *  Drives captions and when each element appears. */
+  words: z.array(z.object({ text: z.string(), start: z.number(), end: z.number() })).optional(),
 });
 
 export const videoRequestSchema = z.object({

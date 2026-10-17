@@ -8,7 +8,7 @@
 
 import React, { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { continueRender, delayRender, useCurrentFrame, useVideoConfig } from "remotion";
-import { RevealPacingContext } from "../../components/widgets/HtmlWidgets";
+import { RevealPacingContext, RevealScheduleContext } from "../../components/widgets/HtmlWidgets";
 import type { Theme } from "../../theme/themes";
 import { getTheme } from "../../theme/themes";
 import { layoutGraph, type GraphLayoutResult } from "../../layout/layout";
@@ -334,11 +334,12 @@ export const KarmaGraphScene: React.FC<GraphSceneProps> = ({ spec, theme }) => {
   // entrance), so arrows no longer point at boxes that have not appeared yet.
   const frame = useCurrentFrame();
   const pacing = useContext(RevealPacingContext);
+  const schedule = useContext(RevealScheduleContext);
   const indexById = new Map(input.components.map((c: any, i: number) => [c.id, i]));
   const edgeOpacity = (to: string) => {
     const i = indexById.get(to);
     if (i === undefined) return 1;
-    const start = i * 5 * pacing;
+    const start = schedule?.get(to) ?? i * 5 * pacing;
     return Math.min(1, Math.max(0, (frame - start) / 15));
   };
   const arrowSvg = laid && box ? buildArrowLayer(input, laid, activeTheme, edgeOpacity) : "";

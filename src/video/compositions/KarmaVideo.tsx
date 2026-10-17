@@ -89,6 +89,7 @@ const SceneBlock: React.FC<{ scene: PreparedScene; transition: number; isLast: b
           fps={fps}
           animation={scene.animation}
           timelineEvents={scene.timelineEvents}
+          words={scene.words}
           sceneMotion={sceneMotion}
           backgroundPattern={backgroundPattern}
           bottomSafeArea={bottomSafeArea}

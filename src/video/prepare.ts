@@ -6,6 +6,7 @@ import type { ValidatedSpec } from "../core/schema";
 import type { ThemeId, LayoutType, VisualComponent, VisualConnection, SceneAnimation, TransitionType } from "../core/types";
 import type { Theme } from "../theme/themes";
 import { getTheme } from "../theme/themes";
+import { captionsFromWords, type SpokenWord } from "./sync/wordSync";
 
 export interface CaptionCue {
   start: number;
@@ -15,6 +16,8 @@ export interface CaptionCue {
 
 export interface PreparedScene {
   index: number;
+  /** Narration word timings, seconds into the scene. */
+  words?: SpokenWord[];
   startFrame: number;
   durationFrames: number;
   audio?: string;
@@ -150,13 +153,16 @@ export async function prepareVideo(video: ValidatedVideoRequest): Promise<Prepar
     }
 
     const timelineEvents = scene.timelineEvents;
+    const words = scene.audio && scene.words && scene.words.length > 0 ? scene.words : undefined;
     const captions = scene.captions && scene.captions.length > 0
       ? scene.captions
-      : scene.narration
-        ? captionsFromNarration(scene.narration, durationFrames / fps)
-        : undefined;
+      : words
+        ? captionsFromWords(words, durationFrames / fps)
+        : scene.narration
+          ? captionsFromNarration(scene.narration, durationFrames / fps)
+          : undefined;
 
-    scenes.push({ index: i, startFrame: cursor, durationFrames, audio: scene.audio, spec: scene.visualSpec, animation, transition, timelineEvents, captions });
+    scenes.push({ index: i, startFrame: cursor, durationFrames, audio: scene.audio, spec: scene.visualSpec, animation, transition, timelineEvents, captions, words });
     cursor += durationFrames;
   }
 

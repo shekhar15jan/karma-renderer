@@ -4,7 +4,7 @@ import type { Theme } from '../../theme/themes';
 import { TechTile, KarmaTechNode, KarmaTechStack, lookupTechIcon } from '../../components/widgets/TechIcon';
 import { assignWithFallback, type SceneComponent } from '../../catalogue/assign';
 import { lookupFrameComponent } from '../frames/registry';
-import { KarmaHeading, KarmaParagraph, KarmaContainer, KarmaGrid, KarmaSplitLayout, KarmaArchitecturePipeline, KarmaCard, KarmaBadge, KarmaCodeBlock, KarmaText, KarmaBulletList, KarmaUmlClassNode, KarmaUmlActorNode, KarmaUmlUseCaseNode, KarmaUmlLifeline, KarmaUmlMessageArrow, KarmaUmlDecisionNode, KarmaUmlComponentNode, KarmaUmlPackageNode, KarmaUmlDatabaseNode, KarmaUmlNoteNode, KarmaFlowDiagram, KarmaFlowTerminalNode, KarmaFlowProcessNode, KarmaFlowIONode, KarmaFlowDocumentNode, KarmaUmlCloudNode, KarmaUmlDeploymentNode, KarmaUmlInterfaceNode, KarmaUmlSyncBarNode, KarmaMicroserviceNode, KarmaApiGatewayNode, KarmaMessageQueueNode, KarmaDockerNode, KarmaKubernetesNode, KarmaLoggingNode, KarmaBrowserNode, KarmaAwsNode, KarmaAzureNode, KarmaGcpNode, KarmaLanguageNode, KarmaConnector, KarmaSlideHeader, KarmaRoadmapTimeline, ThemeModeContext, KarmaBarChart, KarmaDonutChart, KarmaProgressBar, KarmaProfileCard, DesignScale } from '../../components/widgets/HtmlWidgets';
+import { KarmaHeading, KarmaParagraph, KarmaContainer, KarmaGrid, KarmaSplitLayout, KarmaArchitecturePipeline, KarmaCard, KarmaBadge, KarmaCodeBlock, KarmaText, KarmaBulletList, KarmaUmlClassNode, KarmaUmlActorNode, KarmaUmlUseCaseNode, KarmaUmlLifeline, KarmaUmlMessageArrow, KarmaUmlDecisionNode, KarmaUmlComponentNode, KarmaUmlPackageNode, KarmaUmlDatabaseNode, KarmaUmlNoteNode, KarmaFlowDiagram, KarmaFlowTerminalNode, KarmaFlowProcessNode, KarmaFlowIONode, KarmaFlowDocumentNode, KarmaUmlCloudNode, KarmaUmlDeploymentNode, KarmaUmlInterfaceNode, KarmaUmlSyncBarNode, KarmaMicroserviceNode, KarmaApiGatewayNode, KarmaMessageQueueNode, KarmaDockerNode, KarmaKubernetesNode, KarmaLoggingNode, KarmaBrowserNode, KarmaAwsNode, KarmaAzureNode, KarmaGcpNode, KarmaLanguageNode, KarmaConnector, KarmaSlideHeader, KarmaRoadmapTimeline, ThemeModeContext, KarmaBarChart, KarmaDonutChart, KarmaProgressBar, KarmaProfileCard, DesignScale, RevealScheduleContext, RevealAnchorContext } from '../../components/widgets/HtmlWidgets';
 import { KarmaGraphScene } from './KarmaGraphScene';
 
 /** The exact layouts the video renderer implements (skill contract for the Script Agent). */
@@ -416,6 +416,10 @@ const renderComponentRaw = (c: any, index: number): React.ReactElement | null =>
     'roadmap': 'roadmap-component',
     'learning-path': 'roadmap-component',
     'sprint': 'roadmap-component',
+    // Allowed by the backend validator but never rendered: a "database" node (etcd in a
+    // control-plane diagram) drew nothing while its arrows pointed at the empty space.
+    'database': 'uml-database',
+    'output': 'code',
   };
   const mapped = COMPONENT_TYPE_FALLBACKS[t];
   if (mapped === 'roadmap-component') {
@@ -431,7 +435,12 @@ const renderComponentRaw = (c: any, index: number): React.ReactElement | null =>
     return renderComponent({ ...c, type: mapped }, index);
   }
 
-  // Fallback for primitive rendering
+  // Anything else with text renders as a plain card rather than vanishing: a type the
+  // renderer does not know yet must never leave a hole in the scene.
+  if (c.label || c.data?.body || c.sublabel) {
+    console.warn(`[render] no widget for component type "${t}"; rendering it as a card`);
+    return renderComponent({ ...c, type: 'card' }, index);
+  }
   return null;
 };
 
@@ -439,12 +448,19 @@ const renderComponentRaw = (c: any, index: number): React.ReactElement | null =>
  *  SceneVisual's per-frame effect can find and glow/ring it for a scripted
  *  `animation.highlights` entry. `display: contents` keeps the wrapper invisible
  *  to layout — it never affects flex/grid sizing of the wrapped widget. */
+/** Anchors a component's entrance to the moment the narration names it, when scheduled. */
+const RevealAt: React.FC<{ id: string; base: number; children: React.ReactNode }> = ({ id, base, children }) => {
+  const start = React.useContext(RevealScheduleContext)?.get(id);
+  if (start === undefined) return <>{children}</>;
+  return <RevealAnchorContext.Provider value={{ start, base }}>{children}</RevealAnchorContext.Provider>;
+};
+
 export const renderComponent = (c: any, index: number): React.ReactElement | null => {
   const node = renderComponentRaw(c, index);
   if (node == null || !c?.id) return node;
   return (
     <div key={`eid-${index}`} data-eid={String(c.id)} style={{ display: 'contents' }}>
-      {node}
+      <RevealAt id={String(c.id)} base={index * 5}>{node}</RevealAt>
     </div>
   );
 };

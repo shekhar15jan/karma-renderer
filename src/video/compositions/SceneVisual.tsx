@@ -8,7 +8,8 @@ import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remo
 import type { Theme } from "../../theme/themes";
 import type { SceneAnimation } from "../../core/types";
 import { KarmaComponentRenderer } from "./KarmaComponentRenderer";
-import { RevealPacingContext } from "../../components/widgets/HtmlWidgets";
+import { RevealPacingContext, RevealScheduleContext } from "../../components/widgets/HtmlWidgets";
+import { revealTimes, type SpokenWord } from "../sync/wordSync";
 import { cameraTransform } from "../camera/cameraEngine";
 import type { CameraIntent } from "../schema/semanticSceneSpec";
 
@@ -72,6 +73,8 @@ interface SceneVisualProps {
   spec?: any;
   /** Pixels kept clear at the bottom for burned-in captions, so they never cover content. */
   bottomSafeArea?: number;
+  /** Narration word timings: elements appear as they are named instead of on a fixed schedule. */
+  words?: SpokenWord[];
   /** Semantic camera intent (Slice 6) — drives viewport transform via cameraEngine. */
   camera?: CameraIntent;
 }
@@ -154,7 +157,7 @@ function buildSceneDomCache(root: HTMLElement, html: string, highlightIds: strin
   };
 }
 
-export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationFrames, fps, animation, entrance = true, sceneMotion = "animated", timelineEvents, spec, backgroundPattern, camera, bottomSafeArea = 0 }) => {
+export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationFrames, fps, animation, entrance = true, sceneMotion = "animated", timelineEvents, spec, backgroundPattern, camera, bottomSafeArea = 0, words }) => {
   const frame = useCurrentFrame();
   const { width: videoWidth, height: videoHeight } = useVideoConfig();
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -163,7 +166,17 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
   const staticMode = sceneMotion === "static";
   const pattern = backgroundPattern ?? (theme.gridBg ? "grid" : "plain");
   const anim = { ...DEFAULT_ANIMATION, ...animation } as Required<Pick<SceneAnimation, "entrance" | "stagger" | "bullets" | "progress" | "drawCharts">>;
-  const highlights = animation?.highlights ?? [];
+  // When each component appears, in frames: as the narration names it (see wordSync).
+  const schedule = useMemo(() => {
+    if (!words || words.length === 0 || !Array.isArray((spec as any)?.components)) return null;
+    const seconds = revealTimes((spec as any).components, words, durationFrames / fps);
+    return new Map([...seconds].map(([id, s]) => [id, Math.round(s * fps)]));
+  }, [words, spec, durationFrames, fps]);
+  // A scripted highlight must not fire before its element is on screen.
+  const highlights = useMemo(() => (animation?.highlights ?? []).map((h) => {
+    const shown = schedule?.get(h.id);
+    return shown === undefined ? h : { ...h, at: Math.max(h.at, shown / fps + 0.8) };
+  }), [animation, schedule, fps]);
   const highlightIds = useMemo(() => highlights.map((h) => h.id), [highlights]);
 
   // Whole-scene entrance zoom (historical behaviour; disabled when per-element motion runs)
@@ -463,7 +476,9 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
         {spec ? (
           <div ref={rootRef} className="scene-content" style={{ width: "100%", height: bottomSafeArea ? `calc(100% - ${bottomSafeArea}px)` : "100%" }}>
             <RevealPacingContext.Provider value={revealPacing(spec, durationFrames)}>
-              <KarmaComponentRenderer spec={spec} theme={theme} />
+              <RevealScheduleContext.Provider value={schedule}>
+                <KarmaComponentRenderer spec={spec} theme={theme} />
+              </RevealScheduleContext.Provider>
             </RevealPacingContext.Provider>
           </div>
         ) : (

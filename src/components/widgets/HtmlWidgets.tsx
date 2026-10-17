@@ -17,6 +17,11 @@ export const ThemeModeContext = createContext<'light' | 'dark'>('light');
  * narration. Scenes set this so reveals spread across the narration instead.
  */
 export const RevealPacingContext = createContext<number>(1);
+/** Frame at which each component (by id) appears, from the narration's word timings. */
+export const RevealScheduleContext = createContext<Map<string, number> | null>(null);
+/** Set around a scheduled component: its widgets' entrance delays count from `start`
+ *  (keeping their small internal offsets beyond the component's own `base` delay). */
+export const RevealAnchorContext = createContext<{ start: number; base: number } | null>(null);
 export const useThemeMode = () => useContext(ThemeModeContext);
 
 /**
@@ -102,7 +107,9 @@ export const DesignScale: React.FC<{ children: React.ReactNode }> = ({ children 
 // Base animation hook
 export const useEntranceAnimation = (baseStartFrame: number, duration: number = 15) => {
   const frame = useCurrentFrame();
-  const startFrame = baseStartFrame * useContext(RevealPacingContext);
+  const pacing = useContext(RevealPacingContext);
+  const anchor = useContext(RevealAnchorContext);
+  const startFrame = anchor ? anchor.start + Math.max(0, baseStartFrame - anchor.base) : baseStartFrame * pacing;
   const opacity = interpolate(frame, [startFrame, startFrame + duration], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const y = interpolate(frame, [startFrame, startFrame + duration], [20, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const scale = spring({ frame: frame - startFrame, fps: FPS, config: { damping: 12 } });
