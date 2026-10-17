@@ -83,6 +83,9 @@ const DEFAULT_ANIMATION: Required<Pick<SceneAnimation, "entrance" | "stagger" | 
   drawCharts: true,
 };
 
+/** Largest zoom an AI-authored timeline event may apply; more pushes content past the safe margins. */
+const MAX_AI_ZOOM = 1.08;
+
 function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3);
 }
@@ -346,7 +349,12 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
     for (const evt of timelineEvents) {
       if (tMs >= evt.timestamp_ms) {
         if (evt.action === "zoom_in") {
-          dynamicTransform = "scale(1.2)";
+          // Was an instant jump to scale(1.2) (CSS transitions do not animate in frame-by-frame
+          // rendering) that cropped tall diagrams; ease into a capped push-in instead.
+          const target = Math.min(evt.zoom_end ?? 1.2, MAX_AI_ZOOM);
+          const zoomDur = evt.duration_ms ?? 1200;
+          const k = easeOutCubic(Math.min(1, Math.max(0, (tMs - evt.timestamp_ms) / zoomDur)));
+          dynamicTransform = `scale(${1 + (target - 1) * k})`;
           if (evt.target_element_id && rootRef.current) {
              const el = rootRef.current.querySelector<HTMLElement>(`#${evt.target_element_id}`) || 
                        rootRef.current.querySelector<HTMLElement>(`[data-eid="${evt.target_element_id}"]`);
@@ -362,7 +370,7 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
         } else if (evt.action === "ken_burns_zoom") {
           // Ken Burns: slow zoom over time
           const zoomStart = evt.zoom_start ?? 1.0;
-          const zoomEnd = evt.zoom_end ?? 1.15;
+          const zoomEnd = Math.min(evt.zoom_end ?? 1.15, MAX_AI_ZOOM);
           const zoomDur = evt.duration_ms ?? durationFrames / fps * 1000;
           const zoomProgress = Math.min(1, tMs / zoomDur);
           const zoom = zoomStart + (zoomEnd - zoomStart) * easeOutCubic(zoomProgress);
@@ -420,7 +428,7 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
           }}
         />
       ) : null}
-      <AbsoluteFill ref={fillRef} style={{ transform: finalTransform, transformOrigin: staticMode ? "center center" : transformOrigin, overflow: "hidden", transition: staticMode ? "none" : "transform 0.5s ease-out" }}>
+      <AbsoluteFill ref={fillRef} style={{ transform: finalTransform, transformOrigin: staticMode ? "center center" : transformOrigin, overflow: "hidden", transition: "none" }}>
         {spec ? (
           <div ref={rootRef} className="scene-content" style={{ width: "100%", height: bottomSafeArea ? `calc(100% - ${bottomSafeArea}px)` : "100%" }}>
             <KarmaComponentRenderer spec={spec} theme={theme} />
