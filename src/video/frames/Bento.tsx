@@ -14,14 +14,24 @@ import type { FrameFC } from "./types";
 export const Bento: FrameFC = ({ spec, slots, render }) => {
   const hero = slots.hero ?? [];
   const wide = slots.wide ?? [];
-  const tall = slots.tall ?? [];
-  const small = slots.small ?? [];
+  // A tall card that forces a mostly empty third row (hero + wide + tall + small) packs
+  // better as a normal cell, leaving a full two-row grid with room for larger text.
+  const cellsWithTallSpan = (span: number) =>
+    hero.length * 4 + wide.length * 2 + (slots.tall ?? []).length * span + (slots.small ?? []).length;
+  const demoteTall = (slots.tall ?? []).length > 0 && cellsWithTallSpan(2) > 8 && cellsWithTallSpan(1) <= 8;
+  const tall = demoteTall ? [] : slots.tall ?? [];
+  const small = demoteTall ? [...(slots.tall ?? []), ...(slots.small ?? [])] : slots.small ?? [];
   let cursor = 0;
+  // Rows follow the content (4 columns; hero is 2x2, wide 2x1, tall 1x2): a fixed three
+  // rows left an empty row on a two-row bento and squeezed every card into a third.
+  const cells = hero.length * 4 + wide.length * 2 + tall.length * 2 + small.length;
+  const rows = Math.min(3, Math.max(hero.length > 0 || tall.length > 0 ? 2 : 1, Math.ceil(cells / 4)));
 
   return (
     <div className="w-full h-full p-16 flex flex-col z-10 relative">
       <KarmaSlideHeader title={spec.title} subtitle={spec.subtitle} />
-      <div className="flex-grow grid grid-cols-4 grid-rows-3 gap-6 w-full max-w-[1600px] mx-auto">
+      <div className="flex-grow grid grid-cols-4 gap-6 w-full max-w-[1600px] mx-auto"
+        style={{ gridTemplateRows: `repeat(${rows}, minmax(auto, 1fr))` }}>
         {hero.map((c) => (
           <div key={c.id ?? cursor} className="col-span-2 row-span-2 flex">
             {render(c, cursor++)}

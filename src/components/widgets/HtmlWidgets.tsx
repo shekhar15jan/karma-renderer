@@ -1,4 +1,4 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useLayoutEffect, useRef, useState } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import Prism from 'prismjs';
 
@@ -26,7 +26,75 @@ export const useThemeMode = () => useContext(ThemeModeContext);
  */
 export const useViewportScale = () => {
   const { height } = useVideoConfig();
-  return Math.max(1, height / 720);
+  // Inside <DesignScale> the canvas is already zoomed to the baseline; scaling again doubles up.
+  return Math.max(1, height / 720) / useContext(DesignZoomContext);
+};
+
+/** The CSS zoom applied by <DesignScale> (1 outside it). */
+export const DesignZoomContext = createContext<number>(1);
+
+/** Furthest bottom/right edge reached by laid-out content inside `box`, in box CSS px.
+ *  Uses offsetTop/offsetLeft, which ignore transforms, so entrance animations (translate,
+ *  spring scale) do not change the result from frame to frame. Content inside a clipping
+ *  element (a code block, a scrolling terminal) is not counted: it cannot spill out. */
+function contentExtent(box: HTMLElement): { bottom: number; right: number } {
+  let bottom = 0;
+  let right = 0;
+  const walk = (el: HTMLElement) => {
+    for (const child of Array.from(el.children) as HTMLElement[]) {
+      let top = 0;
+      let left = 0;
+      for (let e: HTMLElement | null = child; e && e !== box; e = e.offsetParent as HTMLElement | null) {
+        top += e.offsetTop;
+        left += e.offsetLeft;
+      }
+      bottom = Math.max(bottom, top + child.offsetHeight);
+      right = Math.max(right, left + child.offsetWidth);
+      if (getComputedStyle(child).overflow === "visible") walk(child);
+    }
+  };
+  walk(box);
+  return { bottom, right };
+}
+
+/**
+ * Renders children at the 1280x720 baseline the widgets were designed for. Their Tailwind
+ * sizes (text-xl cards, p-8 padding) otherwise come out at two thirds of the intended
+ * size on a 1080p canvas: ~20px body text that is unreadable on a phone. CSS zoom scales
+ * fonts, padding and gaps together and reflows layout, unlike a transform.
+ *
+ * Dense frames (a bento with a long card) do not fit at the full baseline zoom, so the
+ * zoom steps down until the laid-out content fits the box, never below 1.
+ */
+export const DesignScale: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { height } = useVideoConfig();
+  const maxZoom = Math.max(1, height / 720);
+  const [zoom, setZoom] = useState(maxZoom);
+  const [, setLaidOut] = useState(false);
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    if (!box || zoom <= 1) return;
+    if (box.clientWidth === 0 || box.clientHeight === 0) {
+      // Not laid out yet on the first mount: measuring now would read every frame as
+      // overflowing. Re-render once the box has its real size.
+      const observer = new ResizeObserver(() => {
+        if (box.clientWidth > 0 && box.clientHeight > 0) setLaidOut(true);
+      });
+      observer.observe(box);
+      return () => observer.disconnect();
+    }
+    const { bottom, right } = contentExtent(box);
+    const fit = Math.min(box.clientHeight / Math.max(1, bottom), box.clientWidth / Math.max(1, right));
+    // Text reflows as the zoom changes, so shrink in steps; each step re-runs this effect.
+    if (fit < 0.995) setZoom(Math.max(1, Math.floor(zoom * Math.max(0.85, fit) * 100) / 100));
+  });
+  return (
+    <DesignZoomContext.Provider value={zoom}>
+      {/* Positioned so it is the offsetParent contentExtent measures against. */}
+      <div ref={boxRef} style={{ position: "relative", width: "100%", height: "100%", zoom, overflow: "hidden" }}>{children}</div>
+    </DesignZoomContext.Provider>
+  );
 };
 
 // Base animation hook
@@ -226,7 +294,8 @@ export const KarmaRoadmapTimeline: React.FC<{ steps: { label: string, status: 'c
   
   return (
     <div className={`flex flex-row items-center justify-center w-full px-12 relative ${className}`} style={{ opacity, transform: `translateY(${y}px)` }}>
-      <div className="absolute left-12 right-12 top-1/2 h-2 bg-[var(--scene-border)] -translate-y-1/2 rounded-full"></div>
+      {/* Through the centre of the w-16 dots, not the row: labels below make the row taller. */}
+      <div className="absolute left-12 right-12 top-8 h-2 bg-[var(--scene-border)] -translate-y-1/2 rounded-full"></div>
       <div className="flex justify-between w-full relative z-10">
         {steps.map((step, idx) => {
           const isCompleted = step.status === 'completed';
@@ -241,7 +310,7 @@ export const KarmaRoadmapTimeline: React.FC<{ steps: { label: string, status: 'c
               }`}>
                 {isCompleted && <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>}
               </div>
-              <span className={`text-lg font-bold ${
+              <span className={`text-2xl font-bold text-center max-w-[240px] leading-snug ${
                 isCompleted ? 'text-[var(--scene-primary)]' :
                 isActive ? 'text-[var(--scene-text)]' :
                 'text-[var(--scene-muted)]'

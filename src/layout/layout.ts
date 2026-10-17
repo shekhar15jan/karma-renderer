@@ -97,6 +97,17 @@ export function estimateNodeSize(c: VisualComponent): { width: number; height: n
   }
   const fixed = c.type ? FIXED_NODE_SIZES[c.type] : undefined;
   if (fixed) return fixed;
+  // Cards render as KarmaCard: 32px padding, a 24px bold heading and 20px body text
+  // (data.body). Sizing them like a one-line label let the body spill out of the box
+  // and across the arrows below it.
+  const body = typeof c.data?.body === "string" ? c.data.body : "";
+  if (body && (c.type === "card" || String(c.type ?? "").endsWith("-card"))) {
+    const label = c.label ?? "";
+    const width = Math.min(440, Math.max(220, 64 + Math.max(label.length * 14, Math.min(body.length, 30) * 10.5)));
+    const labelLines = Math.max(1, Math.ceil((label.length * 14) / (width - 64)));
+    const bodyLines = Math.ceil((body.length * 11.5) / (width - 64)); // wraps at word breaks, so a little early
+    return { width: Math.round(width), height: Math.round(64 + labelLines * 30 + 12 + bodyLines * 33) };
+  }
   const icon = c.icon ? 40 : 0;
   const label = c.label ?? "";
   const chars = Math.max(label.length, c.sublabel ? c.sublabel.length : 0);

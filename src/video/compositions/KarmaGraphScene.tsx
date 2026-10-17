@@ -178,6 +178,16 @@ function contentBounds(laid: GraphLayoutResult): { minX: number; minY: number; m
   return { minX, minY, maxX, maxY };
 }
 
+const MAX_GRAPH_SCALE = 1.8;
+
+/** Scale at which the laid-out content fills the graph box (capped at MAX_GRAPH_SCALE). */
+function fitScale(laid: GraphLayoutResult, box: { width: number; height: number }): number {
+  const b = contentBounds(laid);
+  const availW = Math.max(1, box.width - 2 * FIT_MARGIN);
+  const availH = Math.max(1, box.height - 2 * FIT_MARGIN);
+  return Math.min(availW / Math.max(1, b.maxX - b.minX), availH / Math.max(1, b.maxY - b.minY), MAX_GRAPH_SCALE);
+}
+
 export const KarmaGraphScene: React.FC<GraphSceneProps> = ({ spec, theme }) => {
   const activeTheme = theme ?? getTheme(spec.theme);
   const input = useMemo(() => buildGraphInput(spec), [spec]);
@@ -237,16 +247,17 @@ export const KarmaGraphScene: React.FC<GraphSceneProps> = ({ spec, theme }) => {
   useEffect(() => {
     if (!box) return;
     let cancelled = false;
-    layoutGraph(
-      input.components as any,
-      input.connections as any,
-      input.containers as any,
-      box.width,
-      box.height,
-      graphDirection(input.components, input.connections, input.containers),
-      "layered",
-      GRAPH_PADDING,
-    )
+    // The shape heuristic picks the reading direction, but a tall DOWN graph in a 16:9 box
+    // (three rows of cards with labelled arrows) can end up scaled below 1. Lay out both
+    // directions and switch only when the other one renders clearly larger.
+    const preferred = graphDirection(input.components, input.connections, input.containers);
+    const other = preferred === "DOWN" ? "RIGHT" : "DOWN";
+    const layoutIn = (direction: "DOWN" | "RIGHT") =>
+      layoutGraph(input.components as any, input.connections as any, input.containers as any,
+        box.width, box.height, direction, "layered", GRAPH_PADDING);
+    Promise.all([layoutIn(preferred), layoutIn(other).catch(() => null)])
+      .then(([first, second]) =>
+        second && fitScale(second, box) > fitScale(first, box) * 1.15 ? second : first)
       .then((r) => {
         if (cancelled) return;
         setLaid(r);
@@ -291,7 +302,6 @@ export const KarmaGraphScene: React.FC<GraphSceneProps> = ({ spec, theme }) => {
   // scales the whole laid-out graph up (or down, for an unusually large one) to make
   // good use of the measured box, capped so a trivial 2-node graph doesn't blow up to
   // an illegible, oversized diagram.
-  const MAX_GRAPH_SCALE = 1.8;
   const fit = laid && box
     ? (() => {
         // layoutGraph() reports the canvas size (== box) and centres the nodes inside it, so
@@ -300,9 +310,7 @@ export const KarmaGraphScene: React.FC<GraphSceneProps> = ({ spec, theme }) => {
         const b = contentBounds(laid);
         const graphW = Math.max(1, b.maxX - b.minX);
         const graphH = Math.max(1, b.maxY - b.minY);
-        const availW = Math.max(1, box.width - 2 * FIT_MARGIN);
-        const availH = Math.max(1, box.height - 2 * FIT_MARGIN);
-        const scale = Math.min(availW / graphW, availH / graphH, MAX_GRAPH_SCALE);
+        const scale = fitScale(laid, box);
         return {
           scale,
           offsetX: (box.width - graphW * scale) / 2 - b.minX * scale,

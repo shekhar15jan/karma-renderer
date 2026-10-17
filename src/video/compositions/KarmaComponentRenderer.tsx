@@ -4,7 +4,7 @@ import type { Theme } from '../../theme/themes';
 import { TechTile, KarmaTechNode, KarmaTechStack, lookupTechIcon } from '../../components/widgets/TechIcon';
 import { assignWithFallback, type SceneComponent } from '../../catalogue/assign';
 import { lookupFrameComponent } from '../frames/registry';
-import { KarmaHeading, KarmaParagraph, KarmaContainer, KarmaGrid, KarmaSplitLayout, KarmaArchitecturePipeline, KarmaCard, KarmaBadge, KarmaCodeBlock, KarmaText, KarmaBulletList, KarmaUmlClassNode, KarmaUmlActorNode, KarmaUmlUseCaseNode, KarmaUmlLifeline, KarmaUmlMessageArrow, KarmaUmlDecisionNode, KarmaUmlComponentNode, KarmaUmlPackageNode, KarmaUmlDatabaseNode, KarmaUmlNoteNode, KarmaFlowDiagram, KarmaFlowTerminalNode, KarmaFlowProcessNode, KarmaFlowIONode, KarmaFlowDocumentNode, KarmaUmlCloudNode, KarmaUmlDeploymentNode, KarmaUmlInterfaceNode, KarmaUmlSyncBarNode, KarmaMicroserviceNode, KarmaApiGatewayNode, KarmaMessageQueueNode, KarmaDockerNode, KarmaKubernetesNode, KarmaLoggingNode, KarmaBrowserNode, KarmaAwsNode, KarmaAzureNode, KarmaGcpNode, KarmaLanguageNode, KarmaConnector, KarmaSlideHeader, KarmaRoadmapTimeline, ThemeModeContext, KarmaBarChart, KarmaDonutChart, KarmaProgressBar, KarmaProfileCard } from '../../components/widgets/HtmlWidgets';
+import { KarmaHeading, KarmaParagraph, KarmaContainer, KarmaGrid, KarmaSplitLayout, KarmaArchitecturePipeline, KarmaCard, KarmaBadge, KarmaCodeBlock, KarmaText, KarmaBulletList, KarmaUmlClassNode, KarmaUmlActorNode, KarmaUmlUseCaseNode, KarmaUmlLifeline, KarmaUmlMessageArrow, KarmaUmlDecisionNode, KarmaUmlComponentNode, KarmaUmlPackageNode, KarmaUmlDatabaseNode, KarmaUmlNoteNode, KarmaFlowDiagram, KarmaFlowTerminalNode, KarmaFlowProcessNode, KarmaFlowIONode, KarmaFlowDocumentNode, KarmaUmlCloudNode, KarmaUmlDeploymentNode, KarmaUmlInterfaceNode, KarmaUmlSyncBarNode, KarmaMicroserviceNode, KarmaApiGatewayNode, KarmaMessageQueueNode, KarmaDockerNode, KarmaKubernetesNode, KarmaLoggingNode, KarmaBrowserNode, KarmaAwsNode, KarmaAzureNode, KarmaGcpNode, KarmaLanguageNode, KarmaConnector, KarmaSlideHeader, KarmaRoadmapTimeline, ThemeModeContext, KarmaBarChart, KarmaDonutChart, KarmaProgressBar, KarmaProfileCard, DesignScale } from '../../components/widgets/HtmlWidgets';
 import { KarmaGraphScene } from './KarmaGraphScene';
 
 /** The exact layouts the video renderer implements (skill contract for the Script Agent). */
@@ -489,12 +489,14 @@ const KarmaComponentRendererInner: React.FC<{ spec: any, animationDelayOverride?
   const RegisteredFrame = lookupFrameComponent(assignment.frame);
   if (RegisteredFrame) {
     return (
-      <RegisteredFrame
-        spec={spec}
-        slots={assignment.slots}
-        theme={theme}
-        render={(c: SceneComponent, i: number) => renderComponent(c, i)}
-      />
+      <DesignScale>
+        <RegisteredFrame
+          spec={spec}
+          slots={assignment.slots}
+          theme={theme}
+          render={(c: SceneComponent, i: number) => renderComponent(c, i)}
+        />
+      </DesignScale>
     );
   }
 
