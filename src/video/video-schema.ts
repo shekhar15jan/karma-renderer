@@ -89,7 +89,7 @@ export const videoRequestSchema = z.object({
   /** Optional background music as a base64 data URI. */
   music: dataUri.optional(),
   /** 0..1 volume for the music bed. */
-  musicVolume: z.number().min(0).max(1).default(0.2),
+  musicVolume: z.number().min(0).max(1).default(0.3),
   /** Padding in frames added after the final scene. */
   endPaddingFrames: z.number().int().min(0).max(300).default(20),
 

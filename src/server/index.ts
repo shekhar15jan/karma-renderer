@@ -7,6 +7,7 @@ import { buildDocument } from "../renderer/document";
 import { KNOWN_ICONS } from "../icons/icons";
 import { THEMES } from "../theme/themes";
 import { safeValidateVideoRequest, sanitizeVideoRequest } from "../video/video-schema";
+import { withDefaultMusic } from "../video/defaultMusic";
 import { renderVideoBuffer, renderStaticSlideVideo, renderHybridSlideVideo, getCurrentRenderProgress, renderThumbnailBuffer } from "../video/render-video";
 import { CATALOGUE } from "../catalogue/index";
 import { FRAME_COMPONENTS } from "../video/frames/registry";
@@ -120,11 +121,12 @@ app.post("/video", async (req: Request, res: Response) => {
   }
 
   try {
-    const result = validated.data.sceneMotion === "static"
-      ? await renderStaticSlideVideo(validated.data)
-      : validated.data.sceneMotion === "hybrid"
-      ? await renderHybridSlideVideo(validated.data)
-      : await renderVideoBuffer(validated.data);
+    const request = withDefaultMusic(validated.data);
+    const result = request.sceneMotion === "static"
+      ? await renderStaticSlideVideo(request)
+      : request.sceneMotion === "hybrid"
+      ? await renderHybridSlideVideo(request)
+      : await renderVideoBuffer(request);
     res.setHeader("Content-Type", "video/mp4");
     res.setHeader("Content-Length", result.buffer.length);
     res.setHeader("X-Karma-Renderer", "remotion-video-v1");

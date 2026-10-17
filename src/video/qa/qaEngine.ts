@@ -304,9 +304,9 @@ function checkAudio(spec: SemanticSceneSpec, idx: number, opts: QAOptions, out: 
     if (duration < expected - 2) out.push(`scene ${idx}: audio narration level — duration ${duration.toFixed(1)}s shorter than expected ${expected.toFixed(1)}s for text length`);
   }
   if (opts.hasMusic && hasExplicitAudio && idx === 0) {
-    // music duck check: renderer ducks to 0.05; if opts.musicVolume >0.08 flag
-    if (opts.musicVolume !== undefined && opts.musicVolume > 0.08) out.push(`audio music duck — music volume ${opts.musicVolume} > 0.08 during narration; expected -20dB duck (0.05)`);
-    else if (opts.musicVolume === undefined) out.push(`audio music duck — video has music + narration; ensure music ducked to -20dB (0.05) during narration`);
+    // KarmaVideo keeps 65% of the bed volume under narration; much above 0.25 competes with the voice.
+    const ducked = opts.musicVolume !== undefined ? opts.musicVolume * 0.65 : undefined;
+    if (ducked !== undefined && ducked > 0.25) out.push(`audio music duck — music at ${ducked.toFixed(2)} under narration (bed ${opts.musicVolume}); keep it at or below 0.25`);
   }
   const timelineEvents = (spec as unknown as { timelineEvents?: Array<{ timestamp_ms?: number; at?: number }> }).timelineEvents;
   if (Array.isArray(timelineEvents)) {

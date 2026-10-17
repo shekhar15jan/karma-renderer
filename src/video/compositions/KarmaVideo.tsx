@@ -99,33 +99,41 @@ const SceneBlock: React.FC<{ scene: PreparedScene; transition: number; isLast: b
   );
 };
 
-/** Music ducking - reduces music volume when narration is active. */
-const MusicDucking: React.FC<{ 
-  src: string; 
-  loop: boolean; 
-  baseVolume: number; 
-  scenes: PreparedScene[]; 
-  fps: number;
-  duckVolume?: number;
-}> = ({ src, loop, baseVolume, scenes, fps, duckVolume = 0.05 }) => {
-  const frame = useCurrentFrame();
-  const currentTime = frame / fps;
-  
-  // Check if any scene narration is active at current time
-  const isNarrationActive = scenes.some(s => 
-    s.audio && currentTime >= s.startFrame / fps && currentTime < (s.startFrame + s.durationFrames) / fps
-  );
-  
-  const volume = isNarrationActive ? duckVolume : baseVolume;
+/** Seconds the music takes to dip under narration or come back up. */
+const DUCK_RAMP_SECONDS = 0.6;
+/** Share of the bed volume kept under narration (~-4 dB): with the -18 LUFS bed at 0.3 that
+ *  sits ~15 dB under the voice, the usual level for an explainer. 0.05 was ~25 dB under: inaudible. */
+const DUCK_RATIO = 0.65;
 
-  return (
-    <Audio 
-      src={src} 
-      loop={loop} 
-      volume={volume} 
-      playbackRate={1}
-    />
-  );
+/**
+ * Background music that dips under narration. It used to drop to a fixed 0.05 (inaudible, and
+ * narration covers nearly the whole video) the instant a narrated scene began; now it ramps
+ * between bed and ducked levels, fades in at the start and out over the final seconds.
+ */
+const MusicDucking: React.FC<{
+  src: string;
+  baseVolume: number;
+  scenes: PreparedScene[];
+  fps: number;
+  totalFrames: number;
+}> = ({ src, baseVolume, scenes, fps, totalFrames }) => {
+  const ramp = DUCK_RAMP_SECONDS * fps;
+  const narrated = scenes.filter((s) => s.audio).map((s) => [s.startFrame, s.startFrame + s.durationFrames] as const);
+  // 0 outside narration, 1 inside, ramping across each boundary.
+  const duckAmount = (f: number) => {
+    let amount = 0;
+    for (const [start, end] of narrated) {
+      const into = Math.min(f - (start - ramp), end + ramp - f) / ramp;
+      amount = Math.max(amount, Math.min(1, Math.max(0, into)));
+    }
+    return amount;
+  };
+  const volume = (f: number) => {
+    const fadeIn = Math.min(1, f / fps);
+    const fadeOut = Math.min(1, Math.max(0, (totalFrames - f) / (3 * fps)));
+    return baseVolume * (1 - (1 - DUCK_RATIO) * duckAmount(f)) * fadeIn * fadeOut;
+  };
+  return <Audio src={src} loop volume={volume} />;
 };
 
 const allCues = (scenes: PreparedScene[], fps: number): CaptionCue[] => {
@@ -191,14 +199,7 @@ export const KarmaVideo: React.FC<KarmaVideoProps> = ({ video, prepared }) => {
       ))}
       <Branding branding={p.scenes[0]?.spec?.branding ?? video.scenes[0]?.visualSpec?.branding} theme={theme} />
       {p.music ? (
-        <MusicDucking
-          src={p.music}
-          loop
-          baseVolume={p.musicVolume}
-          scenes={p.scenes}
-          fps={p.fps}
-          duckVolume={0.05}
-        />
+        <MusicDucking src={p.music} baseVolume={p.musicVolume} scenes={p.scenes} fps={p.fps} totalFrames={p.totalFrames} />
       ) : null}
       {p.captions?.burnIn && cues.length > 0 && (
         <Captions

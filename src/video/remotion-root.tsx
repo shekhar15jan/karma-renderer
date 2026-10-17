@@ -20,7 +20,7 @@ const DEFAULT_VIDEO: ValidatedVideoRequest = {
   enableIntro: true,
   introTitle: "Karma OS",
   introSubtitle: "Test Environment",
-  musicVolume: 0.2,
+  musicVolume: 0.3,
   endPaddingFrames: 20,
   scenes: [
     {
