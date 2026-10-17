@@ -14,6 +14,15 @@ import { generateSRT } from "./compositions/Captions";
 const COMPOSITION_ID = "karma-video";
 
 /**
+ * Optional Chrome/Chromium binary (REMOTION_BROWSER_EXECUTABLE). Without it Remotion downloads
+ * its headless shell on first render, which fails on hosts without access to remotion.media.
+ */
+function browserExecutable(): string | undefined {
+  const value = process.env.REMOTION_BROWSER_EXECUTABLE?.trim();
+  return value ? value : undefined;
+}
+
+/**
  * Process-level Remotion bundle cache.
  * bundle() compiles webpack (~10s cold start). Since the entry point never changes
  * within a process lifetime, we cache the resulting serveUrl and reuse it for all
@@ -183,7 +192,7 @@ export async function renderVideoBuffer(request: ValidatedVideoRequest): Promise
   const inputProps = { video: request };
 
   const serveUrl = await getCachedBundle(entryPoint);
-  const composition = await selectComposition({ serveUrl, id: COMPOSITION_ID, inputProps });
+  const composition = await selectComposition({ serveUrl, id: COMPOSITION_ID, inputProps, browserExecutable: browserExecutable() });
   currentProgress = {
     status: "rendering",
     renderedFrames: 0,
@@ -218,6 +227,7 @@ export async function renderVideoBuffer(request: ValidatedVideoRequest): Promise
         pixelFormat: "yuv420p",
         scale: outputScale,
         chromiumOptions: { gl: "swangle" },
+        browserExecutable: browserExecutable(),
         logLevel: "error",
         onProgress: (p) => {
           resetIdle();
@@ -462,7 +472,7 @@ export async function renderStaticSlideVideo(request: ValidatedVideoRequest): Pr
   const inputProps = { video: request };
 
   const serveUrl = await getCachedBundle(entryPoint);
-  const composition = await selectComposition({ serveUrl, id: COMPOSITION_ID, inputProps });
+  const composition = await selectComposition({ serveUrl, id: COMPOSITION_ID, inputProps, browserExecutable: browserExecutable() });
   const fps = composition.fps;
   const width = composition.width;
   const height = composition.height;
@@ -500,7 +510,7 @@ export async function renderStaticSlideVideo(request: ValidatedVideoRequest): Pr
       const maxFrame = Math.max(0, composition.durationInFrames - 1);
       const safeFrame = Math.min(Math.max(0, frame), maxFrame);
       await withRenderTimeout(`still ${name} (frame ${safeFrame})`, 30_000,
-        renderStill({ composition, serveUrl, inputProps, frame: safeFrame, output }));
+        renderStill({ composition, serveUrl, inputProps, frame: safeFrame, output, browserExecutable: browserExecutable() }));
       if (currentProgress) {
         currentProgress.renderedFrames += 1;
         currentProgress.progress = Math.round((currentProgress.renderedFrames / Math.max(1, currentProgress.totalFrames)) * 1000) / 10;
@@ -833,7 +843,7 @@ export async function renderHybridSlideVideo(request: ValidatedVideoRequest): Pr
   const inputProps = { video: request };
 
   const serveUrl = await getCachedBundle(entryPoint);
-  const composition = await selectComposition({ serveUrl, id: COMPOSITION_ID, inputProps });
+  const composition = await selectComposition({ serveUrl, id: COMPOSITION_ID, inputProps, browserExecutable: browserExecutable() });
   const fps = composition.fps;
   const width = composition.width;
   const height = composition.height;
@@ -844,7 +854,7 @@ export async function renderHybridSlideVideo(request: ValidatedVideoRequest): Pr
   // existing instance — at several bursts per scene * 22 scenes, that relaunch
   // overhead alone could outweigh the frames saved by not rendering the held gaps.
   // One browser, reused for every call below, keeps that overhead to a single launch.
-  const browser = await openBrowser("chrome", { chromiumOptions: { gl: "swangle" } });
+  const browser = await openBrowser("chrome", { chromiumOptions: { gl: "swangle" }, browserExecutable: browserExecutable() });
   try {
     const ffmpeg = resolveFfmpeg();
     const concurrency = resolveConcurrency();
@@ -949,6 +959,7 @@ export async function renderHybridSlideVideo(request: ValidatedVideoRequest): Pr
             pixelFormat: "yuv420p",
             scale: 1,
             chromiumOptions: { gl: "swangle" },
+            browserExecutable: browserExecutable(),
             logLevel: "error",
             frameRange: [fromFrame, toFrame],
             puppeteerInstance: browser,
@@ -1184,7 +1195,7 @@ export interface ThumbnailRequest {
 export async function renderThumbnailBuffer(request: ThumbnailRequest): Promise<Buffer> {
   const serveUrl = await getCachedBundle(resolveRemotionEntry());
   const inputProps = { ...request };
-  const composition = await selectComposition({ serveUrl, id: "karma-thumbnail", inputProps });
+  const composition = await selectComposition({ serveUrl, id: "karma-thumbnail", inputProps, browserExecutable: browserExecutable() });
   const outputLocation = path.join(os.tmpdir(), `karma-thumb-${process.pid}-${Date.now()}.png`);
   try {
     await renderStill({
@@ -1194,6 +1205,7 @@ export async function renderThumbnailBuffer(request: ThumbnailRequest): Promise<
       inputProps,
       imageFormat: "png",
       chromiumOptions: { gl: "swangle" },
+      browserExecutable: browserExecutable(),
       logLevel: "error",
     });
     return await fs.promises.readFile(outputLocation);

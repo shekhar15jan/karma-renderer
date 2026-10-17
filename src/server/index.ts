@@ -138,6 +138,11 @@ app.post("/video", async (req: Request, res: Response) => {
   }
 });
 
+// A failed background task (e.g. a browser download) must not take the whole renderer down.
+process.on("unhandledRejection", (reason) => {
+  console.error("[renderer] unhandled rejection:", reason instanceof Error ? reason.message : reason);
+});
+
 const port = Number(process.env.PORT ?? 3000);
 const server = app.listen(port, () => {
   console.log(`[karma-renderer] listening on :${port}`);
