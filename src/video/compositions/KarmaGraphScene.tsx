@@ -258,27 +258,36 @@ export const KarmaGraphScene: React.FC<GraphSceneProps> = ({ spec, theme }) => {
     if (measured) return;
     const layer = measureRef.current;
     if (!layer) return;
+    // Nodes that render nothing (or before layout) read 0; layoutGraph estimates those.
     const read = () => {
       const sizes = new Map<string, { width: number; height: number }>();
       for (const el of Array.from(layer.children) as HTMLElement[]) {
         const id = el.dataset.measureId;
         // offset* ignores the entrance transforms (spring scale) the widgets start with.
-        if (id) sizes.set(id, { width: Math.ceil(el.offsetWidth), height: Math.ceil(el.offsetHeight) });
+        if (id && el.offsetWidth > 0 && el.offsetHeight > 0) {
+          sizes.set(id, { width: Math.ceil(el.offsetWidth), height: Math.ceil(el.offsetHeight) });
+        }
       }
       return sizes;
     };
     const sizes = read();
-    if ([...sizes.values()].every((s) => s.width > 0 && s.height > 0)) {
+    if (sizes.size > 0) {
       setMeasured(sizes);
       return;
     }
-    // Not laid out yet on first mount; measure once the layer has a size.
-    const ro = new ResizeObserver(() => {
+    // Nothing laid out yet: a render worker can mount the scene before the page has layout.
+    // Waiting for a resize event here held the "graph-layout" delayRender until the render
+    // timed out (the measuring layer itself never changes size). Re-measure every frame
+    // until layout lands, and only fall back to estimated sizes if it never does.
+    let raf = 0;
+    const started = performance.now();
+    const poll = () => {
       const later = read();
-      if ([...later.values()].every((s) => s.width > 0 && s.height > 0)) setMeasured(later);
-    });
-    ro.observe(layer);
-    return () => ro.disconnect();
+      if (later.size > 0 || performance.now() - started > 5000) setMeasured(later);
+      else raf = requestAnimationFrame(poll);
+    };
+    raf = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(raf);
   });
 
   useEffect(() => {
