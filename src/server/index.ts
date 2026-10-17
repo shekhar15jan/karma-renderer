@@ -7,7 +7,7 @@ import { buildDocument } from "../renderer/document";
 import { KNOWN_ICONS } from "../icons/icons";
 import { THEMES } from "../theme/themes";
 import { safeValidateVideoRequest, sanitizeVideoRequest } from "../video/video-schema";
-import { renderVideoBuffer, renderStaticSlideVideo, renderHybridSlideVideo, getCurrentRenderProgress } from "../video/render-video";
+import { renderVideoBuffer, renderStaticSlideVideo, renderHybridSlideVideo, getCurrentRenderProgress, renderThumbnailBuffer } from "../video/render-video";
 import { CATALOGUE } from "../catalogue/index";
 import { FRAME_COMPONENTS } from "../video/frames/registry";
 import { TECH_ICONS } from "../icons/techIcons.generated";
@@ -87,6 +87,29 @@ app.get("/video/progress", (_req: Request, res: Response) => {
     return;
   }
   res.json(progress);
+});
+
+app.post("/thumbnail", async (req: Request, res: Response) => {
+  const body = req.body ?? {};
+  if (typeof body.title !== "string" || body.title.trim() === "") {
+    res.status(400).json({ success: false, error: "title is required" });
+    return;
+  }
+  try {
+    const buffer = await renderThumbnailBuffer({
+      title: body.title.slice(0, 80),
+      subtitle: typeof body.subtitle === "string" ? body.subtitle.slice(0, 40) : undefined,
+      badges: Array.isArray(body.badges) ? body.badges.filter((b: unknown) => typeof b === "string").map((b: string) => b.slice(0, 16)) : [],
+      channelName: typeof body.channelName === "string" ? body.channelName.slice(0, 40) : undefined,
+    });
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Content-Length", buffer.length);
+    res.send(buffer);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[thumbnail] render failed:", msg);
+    res.status(500).json({ success: false, error: "Thumbnail render failed: " + msg });
+  }
 });
 
 app.post("/video", async (req: Request, res: Response) => {

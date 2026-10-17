@@ -51,6 +51,8 @@ const sceneSchema = z.object({
 
   /** Per-scene captions (word-level or phrase-level). */
   captions: z.array(captionCueSchema).optional(),
+  /** Spoken narration text; used to auto-generate captions when `captions` is absent. */
+  narration: z.string().optional(),
 });
 
 export const videoRequestSchema = z.object({
@@ -74,6 +76,8 @@ export const videoRequestSchema = z.object({
   enableIntro: z.boolean().default(true),
   introTitle: z.string().optional(),
   introSubtitle: z.string().optional(),
+  /** Channel name shown on the intro card and the end screen. */
+  channelName: z.string().optional(),
   branding: z
     .object({
       logo: z.string().optional(),

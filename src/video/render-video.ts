@@ -1172,3 +1172,36 @@ export async function renderHybridSlideVideo(request: ValidatedVideoRequest): Pr
     }
   }
 }
+
+export interface ThumbnailRequest {
+  title: string;
+  subtitle?: string;
+  badges?: string[];
+  channelName?: string;
+}
+
+/** Renders a 1280x720 YouTube thumbnail (PNG) from the karma-thumbnail composition. */
+export async function renderThumbnailBuffer(request: ThumbnailRequest): Promise<Buffer> {
+  const serveUrl = await getCachedBundle(resolveRemotionEntry());
+  const inputProps = { ...request };
+  const composition = await selectComposition({ serveUrl, id: "karma-thumbnail", inputProps });
+  const outputLocation = path.join(os.tmpdir(), `karma-thumb-${process.pid}-${Date.now()}.png`);
+  try {
+    await renderStill({
+      composition,
+      serveUrl,
+      output: outputLocation,
+      inputProps,
+      imageFormat: "png",
+      chromiumOptions: { gl: "swangle" },
+      logLevel: "error",
+    });
+    return await fs.promises.readFile(outputLocation);
+  } finally {
+    try {
+      await fs.promises.unlink(outputLocation);
+    } catch {
+      /* ignore */
+    }
+  }
+}

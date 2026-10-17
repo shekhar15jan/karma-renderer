@@ -4,10 +4,11 @@ import { KarmaSlideHeader } from "../../components/widgets/HtmlWidgets";
 import type { FrameFC } from "./types";
 
 function adaptiveGridCols(count: number): string {
+  // Balanced rows: 4 cards as 2x2 rather than 3+1, 3 cards on one row.
   if (count <= 1) return "grid-cols-1";
-  if (count <= 3) return "grid-cols-1 md:grid-cols-2";
-  if (count <= 6) return "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
-  return "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+  if (count === 2 || count === 4) return "grid-cols-2";
+  if (count === 3 || count <= 6) return "grid-cols-3";
+  return "grid-cols-4";
 }
 
 export const FeatureGrid: FrameFC = ({ spec, slots, render }) => {
@@ -19,8 +20,11 @@ export const FeatureGrid: FrameFC = ({ spec, slots, render }) => {
   return (
     <div className="w-full h-full p-16 flex flex-col z-10 relative">
       <KarmaSlideHeader title={spec.title} subtitle={spec.subtitle} />
-      <div className={`flex-grow grid ${adaptiveGridCols(cells.length)} gap-8 w-full max-w-[1600px] mx-auto auto-rows-fr`}>
-        {cells.map((c, i) => render(c, i))}
+      {/* Cards keep their natural height and the grid is centred, instead of stretching to fill the frame. */}
+      <div className="flex-grow w-full flex items-center">
+        <div className={`grid ${adaptiveGridCols(cells.length)} gap-8 w-full max-w-[1600px] mx-auto items-start`}>
+          {cells.map((c, i) => render(c, i))}
+        </div>
       </div>
     </div>
   );

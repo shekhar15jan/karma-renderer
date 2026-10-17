@@ -167,7 +167,7 @@ export const KarmaVideo: React.FC<KarmaVideoProps> = ({ video, prepared }) => {
   // End screen starts after last scene + transition + padding
   const lastScene = p.scenes[p.scenes.length - 1];
   const endScreenStartFrame = lastScene.startFrame + lastScene.durationFrames + p.transition;
-  const endScreenDurationFrames = Math.min(p.endPaddingFrames ?? 60, 180); // max 6 seconds at 30fps
+  const endScreenDurationFrames = Math.max(1, p.endPaddingFrames ?? 60);
 
   return (
     <AbsoluteFill style={{ background: theme.background, fontFamily: theme.font }}>
@@ -215,10 +215,11 @@ export const KarmaVideo: React.FC<KarmaVideoProps> = ({ video, prepared }) => {
           .filter((t: string) => t.length > 0);
         return (
           <Sequence from={endScreenStartFrame} durationInFrames={endScreenDurationFrames}>
-            <EndScreen 
-              theme={theme} 
-              channelName={video.introTitle} 
-              videoTitle={video.introSubtitle}
+            <EndScreen
+              theme={theme}
+              channelName={video.channelName ?? "Karma OS"}
+              videoTitle={video.introTitle}
+              durationFrames={endScreenDurationFrames}
               recapItems={recapItems.length > 0 ? recapItems : undefined}
             />
           </Sequence>

@@ -1,5 +1,6 @@
 import React, { createContext, useContext } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import Prism from 'prismjs';
 
 // ==========================================
 // Karma UI Design System (Bootstrap-style)
@@ -298,12 +299,24 @@ export const KarmaCodeBlock: React.FC<{ code: string, language?: string, animati
         <div className="w-3.5 h-3.5 rounded-full bg-green-500"></div>
         <span className="ml-6 text-sm text-slate-400 font-mono tracking-wider uppercase" style={{ fontSize: `${14 * viewportScale}px` }}>{language}</span>
       </div>
-      <pre className="p-8 font-mono text-emerald-300 overflow-hidden leading-relaxed whitespace-pre-wrap break-words" style={{ fontSize: `${18 * viewportScale}px` }}>
-        <code>{code}</code>
+      <pre className="p-8 font-mono text-slate-100 overflow-hidden leading-relaxed whitespace-pre-wrap break-words" style={{ fontSize: `${18 * viewportScale}px` }}>
+        <code dangerouslySetInnerHTML={{ __html: highlightCode(code, language) }} />
       </pre>
     </div>
   );
 };
+
+/** Prism-highlights code (Prism escapes its output); unknown languages fall back to escaped plain text. */
+function highlightCode(code: string, language: string): string {
+  const lang = (language || '').toLowerCase();
+  const alias: Record<string, string> = { js: 'javascript', ts: 'typescript', tsx: 'typescript', jsx: 'javascript', py: 'python', sh: 'bash', shell: 'bash', yml: 'yaml', golang: 'go', dockerfile: 'docker' };
+  const name = alias[lang] ?? lang;
+  const grammar = Prism.languages[name];
+  if (grammar) {
+    return Prism.highlight(code, grammar, name);
+  }
+  return code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 // --- Diagrams ---
 

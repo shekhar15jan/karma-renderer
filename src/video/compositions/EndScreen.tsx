@@ -16,6 +16,8 @@ interface EndScreenProps {
   secondVideo?: { title: string; thumbnail?: string; videoId?: string };
   /** Dynamic recap items from scene chapter_titles (passed by KarmaVideo) */
   recapItems?: string[];
+  /** How long the end screen is on screen; drives the fade in/out. */
+  durationFrames?: number;
   /** Call to action text */
   ctaText?: string;
 }
@@ -30,10 +32,11 @@ export const EndScreen: React.FC<EndScreenProps> = ({
   nextVideo,
   secondVideo,
   recapItems: recapItemsProp,
+  durationFrames = END_SCREEN_DURATION,
   ctaText,
 }) => {
   const frame = useCurrentFrame();
-  const progress = frame / END_SCREEN_DURATION;
+  const progress = frame / Math.max(1, durationFrames);
   
   // Fade in over first 0.5s, stay, fade out last 0.5s
   const fadeIn = interpolate(progress, [0, 0.08], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
@@ -66,6 +69,8 @@ export const EndScreen: React.FC<EndScreenProps> = ({
         padding: "40px",
         background: `linear-gradient(135deg, ${theme.background} 0%, ${theme.surface} 100%)`,
       }}>
+        {/* Content is authored at roughly half scale; zoom it to fill a 1080p frame. */}
+        <div style={{ zoom: 1.7, display: "flex", flexDirection: "column", alignItems: "center" }}>
         {/* Progressive Recap — dynamic from chapter_titles */}
         {recapItems && (
         <div style={{ marginBottom: "28px", textAlign: "center" }}>
@@ -196,6 +201,7 @@ export const EndScreen: React.FC<EndScreenProps> = ({
               </div>
             </div>
           )}
+        </div>
         </div>
       </div>
     </AbsoluteFill>
