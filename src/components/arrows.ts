@@ -8,9 +8,21 @@ export interface ArrowPoint {
   y: number;
 }
 
+const LABEL_CHAR_WIDTH = 8.2;
+const LABEL_HALO_PADDING = 24;
+const LABEL_HEIGHT = 30;
+
+/** Size of an edge label's halo. The layout engine reserves exactly this box for it. */
+export function edgeLabelSize(label: string): { width: number; height: number } {
+  return { width: Math.max(80, Math.round(label.trim().length * LABEL_CHAR_WIDTH) + LABEL_HALO_PADDING), height: LABEL_HEIGHT };
+}
+
 export interface ArrowRenderInput {
   points: ArrowPoint[];
   label?: string;
+  /** Where the layout engine placed the label (top-left + size). Without it the label sits at
+   *  the connector midpoint and is shortened to fit the gap. */
+  labelBox?: { x: number; y: number; width: number; height: number };
   style?: ConnectorStyle;
   kind?: ArrowKind;
   color?: string;
@@ -124,7 +136,12 @@ export function renderArrow(input: ArrowRenderInput, markerIdBase: string, theme
   const tailMarker = isDouble ? ` marker-start="url(#${markerId})"` : "";
 
   let labelMarkup = "";
-  if (input.label && input.label.trim()) {
+  if (input.label && input.label.trim() && input.labelBox) {
+    const b = input.labelBox;
+    labelMarkup =
+      `<g id="halo-${markerIdBase}"><rect x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}" rx="8" fill="${theme.surface}" stroke="${theme.border}" stroke-width="1" opacity="0.95"/>` +
+      `<text x="${b.x + b.width / 2}" y="${b.y + b.height / 2 + 1}" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="600" fill="${theme.text}">${escapeXml(input.label.trim())}</text></g>`;
+  } else if (input.label && input.label.trim()) {
     const pos = labelPosition(input.points);
     const haloId = `halo-${markerIdBase}`;
     // A wider halo alone isn't enough: two closely-placed nodes only have so much gap
@@ -135,8 +152,8 @@ export function renderArrow(input: ArrowRenderInput, markerIdBase: string, theme
     const dx = input.points[input.points.length - 1].x - input.points[0].x;
     const dy = input.points[input.points.length - 1].y - input.points[0].y;
     const connectorLength = Math.hypot(dx, dy);
-    const CHAR_WIDTH = 8.2;
-    const HALO_PADDING = 24;
+    const CHAR_WIDTH = LABEL_CHAR_WIDTH;
+    const HALO_PADDING = LABEL_HALO_PADDING;
     // Short vertical connectors in top-down diagrams still have the full gap between sibling
     // nodes (~250px) for a horizontal label; budgeting by connector length alone cut ordinary
     // labels like "isolates process tree" down to "isol…".

@@ -6,7 +6,7 @@
  *  Nodes render as the normal HTML widgets, absolutely positioned.
  */
 
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { continueRender, delayRender, useCurrentFrame, useVideoConfig } from "remotion";
 import { RevealPacingContext } from "../../components/widgets/HtmlWidgets";
 import type { Theme } from "../../theme/themes";
@@ -147,7 +147,7 @@ function buildArrowLayer(
       continue;
     }
     arrows += `<g opacity="${edgeOpacity(e.to).toFixed(3)}">` + renderArrow(
-      { points: edge.points, label: e.label, style: (e.style ?? undefined) as any, kind: (e.kind ?? undefined) as any },
+      { points: edge.points, label: e.label, labelBox: edge.label, style: (e.style ?? undefined) as any, kind: (e.kind ?? undefined) as any },
       `${e.from}_${e.to}_${idx}`,
       theme,
     ) + `</g>`;
@@ -170,6 +170,7 @@ function contentBounds(laid: GraphLayoutResult): { minX: number; minY: number; m
   for (const n of laid.nodes) add(n.x, n.y, n.x + n.width, n.y + n.height);
   for (const c of laid.containers) add(c.x, c.y, c.x + c.width, c.y + c.height);
   for (const e of laid.edges) {
+    if (e.label) add(e.label.x, e.label.y, e.label.x + e.label.width, e.label.y + e.label.height);
     for (const p of e.points) {
       add(p.x - EDGE_LABEL_ALLOWANCE, p.y - EDGE_LABEL_ALLOWANCE, p.x + EDGE_LABEL_ALLOWANCE, p.y + EDGE_LABEL_ALLOWANCE);
     }
@@ -179,6 +180,10 @@ function contentBounds(laid: GraphLayoutResult): { minX: number; minY: number; m
 }
 
 const MAX_GRAPH_SCALE = 1.8;
+/** Widest a diagram node may be before its text wraps; code and terminals need more room. */
+const MAX_NODE_WIDTH = 440;
+const MAX_CODE_NODE_WIDTH = 640;
+const CODE_NODE_TYPES = new Set(["code", "terminal", "terminal-window", "code-block"]);
 
 /** Scale at which the laid-out content fills the graph box (capped at MAX_GRAPH_SCALE). */
 function fitScale(laid: GraphLayoutResult, box: { width: number; height: number }): number {
@@ -244,16 +249,49 @@ export const KarmaGraphScene: React.FC<GraphSceneProps> = ({ spec, theme }) => {
     };
   }, []);
 
+  // ELK places nodes using the sizes it is given. Per-type size estimates never matched the
+  // rendered widgets (a card's body text, a YAML block), so text spilled over arrows or got
+  // clipped. Render each node once, invisibly, at its natural size and lay out with that.
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [measured, setMeasured] = useState<Map<string, { width: number; height: number }> | null>(null);
+  useLayoutEffect(() => {
+    if (measured) return;
+    const layer = measureRef.current;
+    if (!layer) return;
+    const read = () => {
+      const sizes = new Map<string, { width: number; height: number }>();
+      for (const el of Array.from(layer.children) as HTMLElement[]) {
+        const id = el.dataset.measureId;
+        // offset* ignores the entrance transforms (spring scale) the widgets start with.
+        if (id) sizes.set(id, { width: Math.ceil(el.offsetWidth), height: Math.ceil(el.offsetHeight) });
+      }
+      return sizes;
+    };
+    const sizes = read();
+    if ([...sizes.values()].every((s) => s.width > 0 && s.height > 0)) {
+      setMeasured(sizes);
+      return;
+    }
+    // Not laid out yet on first mount; measure once the layer has a size.
+    const ro = new ResizeObserver(() => {
+      const later = read();
+      if ([...later.values()].every((s) => s.width > 0 && s.height > 0)) setMeasured(later);
+    });
+    ro.observe(layer);
+    return () => ro.disconnect();
+  });
+
   useEffect(() => {
-    if (!box) return;
+    if (!box || !measured) return;
     let cancelled = false;
     // The shape heuristic picks the reading direction, but a tall DOWN graph in a 16:9 box
     // (three rows of cards with labelled arrows) can end up scaled below 1. Lay out both
     // directions and switch only when the other one renders clearly larger.
     const preferred = graphDirection(input.components, input.connections, input.containers);
     const other = preferred === "DOWN" ? "RIGHT" : "DOWN";
+    const sized = input.components.map((c: any) => ({ ...c, ...measured.get(c.id) }));
     const layoutIn = (direction: "DOWN" | "RIGHT") =>
-      layoutGraph(input.components as any, input.connections as any, input.containers as any,
+      layoutGraph(sized as any, input.connections as any, input.containers as any,
         box.width, box.height, direction, "layered", GRAPH_PADDING);
     Promise.all([layoutIn(preferred), layoutIn(other).catch(() => null)])
       .then(([first, second]) =>
@@ -272,7 +310,7 @@ export const KarmaGraphScene: React.FC<GraphSceneProps> = ({ spec, theme }) => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, box]);
+  }, [input, box, measured]);
 
   // If the component unmounts before the async layout resolves, release the render handle.
   useEffect(
@@ -321,6 +359,23 @@ export const KarmaGraphScene: React.FC<GraphSceneProps> = ({ spec, theme }) => {
 
   return (
     <div ref={wrapRef} className="relative w-full h-full overflow-hidden" style={{ zIndex: 1 }}>
+      {!measured ? (
+        <div ref={measureRef} aria-hidden style={{ position: "absolute", left: 0, top: 0, visibility: "hidden" }}>
+          {input.components.map((c: any, i: number) => (
+            <div
+              key={c.id}
+              data-measure-id={c.id}
+              style={{
+                position: "absolute",
+                width: "max-content",
+                maxWidth: CODE_NODE_TYPES.has(c.type) ? MAX_CODE_NODE_WIDTH : MAX_NODE_WIDTH,
+              }}
+            >
+              {renderComponent(c, i)}
+            </div>
+          ))}
+        </div>
+      ) : null}
       {laid && box && fit ? (
         <div
           style={{

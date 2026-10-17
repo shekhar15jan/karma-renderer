@@ -4,6 +4,7 @@
  */
 
 import { renderedTech } from "../icons/techLabel";
+import { edgeLabelSize } from "../components/arrows";
 import ELK from "elkjs";
 import type { VisualComponent, VisualConnection, VisualContainer, LayoutType } from "../core/types";
 
@@ -21,6 +22,8 @@ export interface PlacedEdge {
   from: string;
   to: string;
   points: Array<{ x: number; y: number }>;
+  /** The edge label's box, placed by ELK clear of the nodes. */
+  label?: { x: number; y: number; width: number; height: number };
 }
 
 export interface PlacedContainer {
@@ -88,6 +91,8 @@ const FIXED_NODE_SIZES: Record<string, { width: number; height: number }> = {
 
 /** Sizing heuristics for un-sized nodes. */
 export function estimateNodeSize(c: VisualComponent): { width: number; height: number } {
+  // Sizes measured from the rendered widget (KarmaGraphScene) beat any estimate below.
+  if (c.width && c.height) return { width: c.width, height: c.height };
   // Nodes that render as a logo + label row (KarmaTechNode) are as wide as their label; the
   // per-type fixed sizes (e.g. 160px for docker-node) made ELK pack them too tightly, so edge
   // labels overlapped the nodes and wide rows overflowed the frame.
@@ -199,10 +204,14 @@ export async function layoutGraph(
     const srcKnown = byId.has(e.from) || knownContainerIds.has(e.from);
     const tgtKnown = byId.has(e.to) || knownContainerIds.has(e.to);
     if (!srcKnown || !tgtKnown) continue;
+    // Labels go to ELK with their real size so it leaves room for them between the nodes;
+    // drawn afterwards at the connector midpoint they overlapped whichever node was closest.
+    const label = (e.label ?? "").trim();
     elkEdges.push({
       id: `e_${e.from}_${e.to}_${Math.abs(e.from.hashCode2() + e.to.hashCode2())}`,
       sources: [e.from],
       targets: [e.to],
+      labels: label ? [{ text: label, ...edgeLabelSize(label), layoutOptions: { "elk.edgeLabels.placement": "CENTER" } }] : [],
       layoutOptions: {
         "elk.edgeRouting": e.style === "straight" ? "UNDIRECTED" : "ORTHOGONAL",
         "elk.layered.edgeLabels.side": "UP",
@@ -211,8 +220,6 @@ export async function layoutGraph(
   }
 
   const algorithm = mode === "layered" ? "layered" : mode === "box" ? "box" : "stress";
-  // Labelled edges need room between layers for the label box to sit clear of both nodes.
-  const hasEdgeLabels = connections.some((e) => (e.label ?? "").trim().length > 0);
   const graph = {
     id: "root",
     layoutOptions: {
@@ -220,7 +227,8 @@ export async function layoutGraph(
       "elk.direction": direction,
       "elk.spacing.nodeNode": "48",
       "elk.spacing.componentComponent": "60",
-      "elk.layered.spacing.nodeNodeBetweenLayers": hasEdgeLabels ? "110" : "70",
+      "elk.layered.spacing.nodeNodeBetweenLayers": "70",
+      "elk.spacing.edgeLabel": "8",
       "elk.layered.spacing.edgeNodeBetweenLayers": "40",
       "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
       "elk.edgeRouting": "ORTHOGONAL",
@@ -279,7 +287,9 @@ export async function layoutGraph(
       for (const bp of section.bendPoints ?? []) pts.push(bp);
       if (section.endPoint) pts.push(section.endPoint);
     }
-    edges.push({ from: e.sources?.[0] ?? "", to: e.targets?.[0] ?? "", points: pts });
+    const l = e.labels?.[0];
+    const label = l && l.x != null && l.y != null ? { x: l.x, y: l.y, width: l.width, height: l.height } : undefined;
+    edges.push({ from: e.sources?.[0] ?? "", to: e.targets?.[0] ?? "", points: pts, label });
   }
 
   // ---- compute bounding box
@@ -303,7 +313,10 @@ export async function layoutGraph(
 
   for (const n of nodes) { n.x += offsetX; n.y += offsetY; }
   for (const c of containersOut) { c.x += offsetX; c.y += offsetY; }
-  for (const e of edges) { for (const p of e.points) { p.x += offsetX; p.y += offsetY; } }
+  for (const e of edges) {
+    for (const p of e.points) { p.x += offsetX; p.y += offsetY; }
+    if (e.label) { e.label.x += offsetX; e.label.y += offsetY; }
+  }
 
   return { nodes, edges, containers: containersOut, width: frameW, height: frameH, extraPadding };
 }
