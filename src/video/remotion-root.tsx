@@ -48,7 +48,7 @@ export const KarmaRoot: React.FC = () => (
       fps={30}
       width={1280}
       height={720}
-      defaultProps={{ title: "Karma OS Explained", subtitle: "in 5 minutes", badges: ["API", "AI"], channelName: "Karma OS" }}
+      defaultProps={{ title: "Karma OS Explained", badges: [] as string[] }}
     />
     <Composition
       id="WidgetShowcase"

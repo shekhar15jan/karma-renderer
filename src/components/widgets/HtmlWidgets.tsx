@@ -10,6 +10,13 @@ const FPS = 30;
 
 /** Provides the active theme's lightness mode so tone widgets can pick readable text colors. */
 export const ThemeModeContext = createContext<'light' | 'dark'>('light');
+
+/**
+ * Multiplier applied to every widget's entrance delay. Components are staggered 5 frames
+ * apart, so a whole scene appeared within ~1s and then sat still for the rest of an 18s
+ * narration. Scenes set this so reveals spread across the narration instead.
+ */
+export const RevealPacingContext = createContext<number>(1);
 export const useThemeMode = () => useContext(ThemeModeContext);
 
 /**
@@ -23,8 +30,9 @@ export const useViewportScale = () => {
 };
 
 // Base animation hook
-export const useEntranceAnimation = (startFrame: number, duration: number = 15) => {
+export const useEntranceAnimation = (baseStartFrame: number, duration: number = 15) => {
   const frame = useCurrentFrame();
+  const startFrame = baseStartFrame * useContext(RevealPacingContext);
   const opacity = interpolate(frame, [startFrame, startFrame + duration], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const y = interpolate(frame, [startFrame, startFrame + duration], [20, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const scale = spring({ frame: frame - startFrame, fps: FPS, config: { damping: 12 } });

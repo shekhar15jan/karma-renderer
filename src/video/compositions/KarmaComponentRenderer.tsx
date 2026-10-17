@@ -59,6 +59,28 @@ export function normalizeVideoLayout(layout: string | undefined): string {
   return 'standard-content';
 }
 
+/** Diagram node types whose label may name a real technology worth showing as its logo. */
+const LABEL_TECH_NODE_TYPES = new Set([
+  'docker-node', 'microservice-node', 'api-gateway', 'database', 'uml-database', 'message-queue',
+  'kubernetes-node', 'logging-node', 'language-node', 'flow-process', 'uml-component', 'uml-cloud',
+]);
+/** Words too ambiguous to imply a technology on their own ("PID Namespace node"). */
+const AMBIGUOUS_TECH_WORDS = new Set(['node', 'idea', 'spark', 'vault', 'helm', 'envoy', 'argo', 'consul', 'kong']);
+
+/** First technology named in a label: two-word names first ("Spring Boot"), then single words. */
+function techFromLabel(label?: string): string | null {
+  if (!label) return null;
+  const words = label.toLowerCase().split(/[^a-z0-9.+#-]+/).filter(Boolean);
+  for (let i = 0; i + 1 < words.length; i++) {
+    const pair = `${words[i]} ${words[i + 1]}`;
+    if (lookupTechIcon(pair)) return pair;
+  }
+  for (const w of words) {
+    if (w.length >= 4 && !AMBIGUOUS_TECH_WORDS.has(w) && lookupTechIcon(w)) return w;
+  }
+  return null;
+}
+
 /** Renders one spec component to its widget. Wrapped below by the exported
  *  `renderComponent` so every call site (including the recursive ones inside this
  *  function) gets a `data-eid` hook for scripted highlights, at no layout cost. */
@@ -88,6 +110,16 @@ const renderComponentRaw = (c: any, index: number): React.ReactElement | null =>
       return <KarmaTechStack key={index} items={items} size={c.data?.size ?? 'lg'}
         showLabels={c.data?.showLabels !== false} animationDelay={delay} />;
     }
+  }
+
+  // Scripts rarely set data.tech, so every diagram node rendered the same generic blue
+  // boxes; detect a real technology from the node's label (e.g. "Host Linux Kernel").
+  const detectedTech = !c.data?.tech && LABEL_TECH_NODE_TYPES.has(t) ? techFromLabel(c.label) : null;
+  if (detectedTech) {
+    return (
+      <KarmaTechNode key={index} tech={detectedTech} label={c.label} sublabel={c.sublabel || c.data?.sublabel}
+        size={c.data?.size ?? 'md'} animationDelay={delay} />
+    );
   }
 
   if (c.data?.tech && lookupTechIcon(c.data.tech)) {

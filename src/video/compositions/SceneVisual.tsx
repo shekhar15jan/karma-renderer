@@ -8,6 +8,7 @@ import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 import type { Theme } from "../../theme/themes";
 import type { SceneAnimation } from "../../core/types";
 import { KarmaComponentRenderer } from "./KarmaComponentRenderer";
+import { RevealPacingContext } from "../../components/widgets/HtmlWidgets";
 import { cameraTransform } from "../camera/cameraEngine";
 import type { CameraIntent } from "../schema/semanticSceneSpec";
 
@@ -82,6 +83,21 @@ const DEFAULT_ANIMATION: Required<Pick<SceneAnimation, "entrance" | "stagger" | 
   progress: true,
   drawCharts: true,
 };
+
+/** Share of the scene over which components are revealed; the rest holds the full picture. */
+const REVEAL_SPAN = 0.6;
+const MAX_REVEAL_PACING = 20;
+
+/**
+ * Stretches widget entrance delays (index * 5 frames) so the last component appears at about
+ * REVEAL_SPAN of the scene: something new lands every few seconds instead of everything at once.
+ */
+function revealPacing(spec: any, durationFrames: number): number {
+  const count = Array.isArray(spec?.components) ? spec.components.length : 0;
+  if (count < 2 || durationFrames <= 0) return 1;
+  const lastDelay = (count - 1) * 5 + 10;
+  return Math.max(1, Math.min(MAX_REVEAL_PACING, (durationFrames * REVEAL_SPAN) / lastDelay));
+}
 
 /** Largest zoom an AI-authored timeline event may apply; more pushes content past the safe margins. */
 const MAX_AI_ZOOM = 1.08;
@@ -431,7 +447,9 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
       <AbsoluteFill ref={fillRef} style={{ transform: finalTransform, transformOrigin: staticMode ? "center center" : transformOrigin, overflow: "hidden", transition: "none" }}>
         {spec ? (
           <div ref={rootRef} className="scene-content" style={{ width: "100%", height: bottomSafeArea ? `calc(100% - ${bottomSafeArea}px)` : "100%" }}>
-            <KarmaComponentRenderer spec={spec} theme={theme} />
+            <RevealPacingContext.Provider value={revealPacing(spec, durationFrames)}>
+              <KarmaComponentRenderer spec={spec} theme={theme} />
+            </RevealPacingContext.Provider>
           </div>
         ) : (
           <div

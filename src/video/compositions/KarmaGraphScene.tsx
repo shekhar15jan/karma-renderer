@@ -6,8 +6,9 @@
  *  Nodes render as the normal HTML widgets, absolutely positioned.
  */
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { continueRender, delayRender, useVideoConfig } from "remotion";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { continueRender, delayRender, useCurrentFrame, useVideoConfig } from "remotion";
+import { RevealPacingContext } from "../../components/widgets/HtmlWidgets";
 import type { Theme } from "../../theme/themes";
 import { getTheme } from "../../theme/themes";
 import { layoutGraph, type GraphLayoutResult } from "../../layout/layout";
@@ -111,7 +112,12 @@ function buildGraphInput(spec: any): GraphSceneInput {
 }
 
 /** Renders markers + arrows as a single SVG fragment, mirroring renderGraphScene. */
-function buildArrowLayer(input: GraphSceneInput, laid: GraphLayoutResult, theme: Theme): string {
+function buildArrowLayer(
+  input: GraphSceneInput,
+  laid: GraphLayoutResult,
+  theme: Theme,
+  edgeOpacity: (to: string) => number = () => 1,
+): string {
   const placedById = new Map(laid.nodes.map((n) => [n.id, n]));
   let arrows = "";
   const connByKey = new Map<string, number>();
@@ -124,7 +130,7 @@ function buildArrowLayer(input: GraphSceneInput, laid: GraphLayoutResult, theme:
       const f = placedById.get(e.from);
       const t = placedById.get(e.to);
       if (f && t) {
-        arrows += renderArrow(
+        arrows += `<g opacity="${edgeOpacity(e.to).toFixed(3)}">` + renderArrow(
           {
             points: [
               { x: f.x + f.width / 2, y: f.y + f.height / 2 },
@@ -136,15 +142,15 @@ function buildArrowLayer(input: GraphSceneInput, laid: GraphLayoutResult, theme:
           },
           `${e.from}_${e.to}_${idx}`,
           theme,
-        );
+        ) + `</g>`;
       }
       continue;
     }
-    arrows += renderArrow(
+    arrows += `<g opacity="${edgeOpacity(e.to).toFixed(3)}">` + renderArrow(
       { points: edge.points, label: e.label, style: (e.style ?? undefined) as any, kind: (e.kind ?? undefined) as any },
       `${e.from}_${e.to}_${idx}`,
       theme,
-    );
+    ) + `</g>`;
   }
   return arrows;
 }
@@ -264,7 +270,18 @@ export const KarmaGraphScene: React.FC<GraphSceneProps> = ({ spec, theme }) => {
     [],
   );
 
-  const arrowSvg = laid && box ? buildArrowLayer(input, laid, activeTheme) : "";
+  // Each arrow fades in with its target node (same index * 5 * pacing delay as the node's
+  // entrance), so arrows no longer point at boxes that have not appeared yet.
+  const frame = useCurrentFrame();
+  const pacing = useContext(RevealPacingContext);
+  const indexById = new Map(input.components.map((c: any, i: number) => [c.id, i]));
+  const edgeOpacity = (to: string) => {
+    const i = indexById.get(to);
+    if (i === undefined) return 1;
+    const start = i * 5 * pacing;
+    return Math.min(1, Math.max(0, (frame - start) / 15));
+  };
+  const arrowSvg = laid && box ? buildArrowLayer(input, laid, activeTheme, edgeOpacity) : "";
 
   // ELK lays out nodes at their fixed pixel sizes (e.g. 200x120 for a microservice-node)
   // with no awareness of the actual canvas — a small graph (2-4 nodes) previously

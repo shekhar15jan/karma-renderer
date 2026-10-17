@@ -2,6 +2,8 @@
 
 import React from "react";
 import { AbsoluteFill } from "remotion";
+import { lookupTechIcon } from "../../icons/techIcons.generated";
+import { TechMark } from "../../components/widgets/TechIcon";
 
 export interface ThumbnailProps {
   title: string;
@@ -22,7 +24,19 @@ function titleFontSize(title: string): number {
   return 76;
 }
 
+/** First technology named in the title ("Docker Explained..." -> docker), for the hero logo. */
+function techFromTitle(title: string): string | null {
+  for (const w of title.toLowerCase().split(/[^a-z0-9.+#-]+/)) {
+    if (w.length >= 3 && w !== "node" && lookupTechIcon(w)) return w;
+  }
+  return null;
+}
+
 export const Thumbnail: React.FC<ThumbnailProps> = ({ title, subtitle, badges = [], channelName }) => {
+  // A big recognisable logo is what makes a tech thumbnail readable at phone size;
+  // plain text alone was lost in the feed.
+  const heroTech = badges.length === 0 ? techFromTitle(title) : null;
+  const heroDef = heroTech ? lookupTechIcon(heroTech) : null;
   const words = title.trim().split(/\s+/);
   // Highlight the last word (usually the key noun) in the accent colour.
   const lead = words.slice(0, -1).join(" ");
@@ -48,7 +62,7 @@ export const Thumbnail: React.FC<ThumbnailProps> = ({ title, subtitle, badges = 
         }}
       />
 
-      <div style={{ position: "relative", maxWidth: 900 }}>
+      <div style={{ position: "relative", maxWidth: heroDef ? 760 : 900 }}>
         <div
           style={{
             fontSize: titleFontSize(title),
@@ -81,6 +95,27 @@ export const Thumbnail: React.FC<ThumbnailProps> = ({ title, subtitle, badges = 
           </div>
         ) : null}
       </div>
+
+      {heroDef && heroTech ? (
+        <div style={{ position: "absolute", right: 70, top: 0, bottom: 0, display: "flex", alignItems: "center" }}>
+          <div
+            style={{
+              width: 330,
+              height: 330,
+              borderRadius: 72,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(18,26,47,0.92)",
+              border: `6px solid #${heroDef.hex}`,
+              boxShadow: `0 0 80px #${heroDef.hex}88`,
+              transform: "rotate(6deg)",
+            }}
+          >
+            <TechMark tech={heroTech} size={220} tint={`#${heroDef.hex}`} />
+          </div>
+        </div>
+      ) : null}
 
       {badges.length > 0 ? (
         <div style={{ position: "absolute", right: 56, top: 0, bottom: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: 22 }}>
