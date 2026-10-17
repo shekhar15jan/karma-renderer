@@ -4,9 +4,9 @@ exports.EndScreen = void 0;
 const jsx_runtime_1 = require("react/jsx-runtime");
 const remotion_1 = require("remotion");
 const END_SCREEN_DURATION = 180; // frames at 30fps = 6 seconds
-const EndScreen = ({ theme, channelName = "Karma OS", videoTitle, avatar, nextVideo, secondVideo, }) => {
+const EndScreen = ({ theme, channelName = "Karma OS", videoTitle, avatar, nextVideo, secondVideo, durationFrames = END_SCREEN_DURATION, }) => {
     const frame = (0, remotion_1.useCurrentFrame)();
-    const progress = frame / END_SCREEN_DURATION;
+    const progress = frame / Math.max(1, durationFrames);
     // Fade in over first 0.5s, stay, fade out last 0.5s
     const fadeIn = (0, remotion_1.interpolate)(progress, [0, 0.08], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
     const fadeOut = (0, remotion_1.interpolate)(progress, [0.92, 1], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });

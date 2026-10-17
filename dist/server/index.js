@@ -57,12 +57,36 @@ app.post("/video", async (req, res) => {
         res.setHeader("X-Karma-Renderer", "remotion-video-v1");
         res.setHeader("X-Karma-Video-Fps", String(result.fps));
         res.setHeader("X-Karma-Video-Duration", String(Math.round(result.durationInFrames / result.fps)));
+        res.setHeader("X-Karma-Scene-Starts", result.sceneStarts.map((s) => s.toFixed(2)).join(","));
         res.send(result.buffer);
     }
     catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         console.error("[video] render failed:", msg);
         res.status(500).json({ success: false, error: "Video render failed: " + msg });
+    }
+});
+app.post("/thumbnail", async (req, res) => {
+    const body = req.body ?? {};
+    if (typeof body.title !== "string" || body.title.trim() === "") {
+        res.status(400).json({ success: false, error: "title is required" });
+        return;
+    }
+    try {
+        const buffer = await (0, render_video_1.renderThumbnailBuffer)({
+            title: body.title.slice(0, 80),
+            subtitle: typeof body.subtitle === "string" ? body.subtitle.slice(0, 40) : undefined,
+            badges: Array.isArray(body.badges) ? body.badges.filter((b) => typeof b === "string").map((b) => b.slice(0, 16)) : [],
+            channelName: typeof body.channelName === "string" ? body.channelName.slice(0, 40) : undefined,
+        });
+        res.setHeader("Content-Type", "image/png");
+        res.setHeader("Content-Length", buffer.length);
+        res.send(buffer);
+    }
+    catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("[thumbnail] render failed:", msg);
+        res.status(500).json({ success: false, error: "Thumbnail render failed: " + msg });
     }
 });
 const port = Number(process.env.PORT ?? 3000);

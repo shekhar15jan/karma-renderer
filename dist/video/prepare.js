@@ -2,6 +2,7 @@
 /** Video prep - computes scene timeline + pre-renders each scene's visual HTML. */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.estimateSceneSeconds = estimateSceneSeconds;
+exports.captionsFromNarration = captionsFromNarration;
 exports.prepareVideo = prepareVideo;
 const media_utils_1 = require("@remotion/media-utils");
 const themes_1 = require("../theme/themes");
@@ -28,6 +29,35 @@ function estimateSceneSeconds(spec) {
 }
 /** Builds the scene visual frame through the SHARED frame builder so that
  *  video frames are pixel-identical to the /render stills. */
+const CAPTION_MAX_WORDS = 7;
+/** Splits narration into short phrases and times them proportionally to their length
+ *  across the scene's (audio-derived) duration. */
+function captionsFromNarration(narration, durationSeconds) {
+    const words = narration.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+    if (words.length === 0 || durationSeconds <= 0)
+        return [];
+    const phrases = [];
+    let current = [];
+    for (const word of words) {
+        current.push(word);
+        const endsClause = /[.!?;:,]$/.test(word);
+        if (current.length >= CAPTION_MAX_WORDS || (endsClause && current.length >= 3)) {
+            phrases.push(current.join(" "));
+            current = [];
+        }
+    }
+    if (current.length)
+        phrases.push(current.join(" "));
+    const totalChars = phrases.reduce((n, p) => n + p.length, 0);
+    const cues = [];
+    let cursor = 0;
+    for (const phrase of phrases) {
+        const span = (phrase.length / totalChars) * durationSeconds;
+        cues.push({ start: cursor, end: cursor + span, text: phrase });
+        cursor += span;
+    }
+    return cues;
+}
 function introFramesFor(video) {
     if (!video.enableIntro)
         return 0;
@@ -57,11 +87,16 @@ async function prepareVideo(video) {
             durationFrames = Math.max(1, Math.round(estimateSceneSeconds(scene.visualSpec) * fps));
         }
         const timelineEvents = scene.timelineEvents;
-        const captions = scene.captions;
+        const captions = scene.captions && scene.captions.length > 0
+            ? scene.captions
+            : scene.narration
+                ? captionsFromNarration(scene.narration, durationFrames / fps)
+                : undefined;
         scenes.push({ index: i, startFrame: cursor, durationFrames, audio: scene.audio, spec: scene.visualSpec, animation, transition, timelineEvents, captions });
         cursor += durationFrames;
     }
-    const totalFrames = cursor + video.endPaddingFrames;
+    // The end screen starts one transition after the last scene and runs for endPaddingFrames.
+    const totalFrames = cursor + (video.enableIntro ? transition : 0) + video.endPaddingFrames;
     const captionsConfig = video.captions ? {
         burnIn: video.captions.burnIn ?? true,
         preset: video.captions.preset ?? "youtube",

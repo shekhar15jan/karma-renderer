@@ -10,6 +10,7 @@ require("../styles/global.css");
 const remotion_1 = require("remotion");
 const KarmaVideo_1 = require("./compositions/KarmaVideo");
 const WidgetShowcase_1 = require("./compositions/WidgetShowcase");
+const Thumbnail_1 = require("./compositions/Thumbnail");
 const terminal_test_json_1 = __importDefault(require("./mock_specs/terminal_test.json"));
 const DEFAULT_VIDEO = {
     fps: 30,
@@ -27,6 +28,9 @@ const DEFAULT_VIDEO = {
         },
     ],
 };
-const KarmaRoot = () => ((0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsx)(remotion_1.Composition, { id: "karma-video", component: KarmaVideo_1.KarmaVideo, durationInFrames: 300, fps: 30, width: 1920, height: 1080, defaultProps: { video: DEFAULT_VIDEO }, calculateMetadata: KarmaVideo_1.karmaVideoCalculateMetadata }), (0, jsx_runtime_1.jsx)(remotion_1.Composition, { id: "WidgetShowcase", component: WidgetShowcase_1.WidgetShowcase, durationInFrames: 150, fps: 30, width: 1920, height: 1080 })] }));
+const KarmaRoot = () => ((0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsx)(remotion_1.Composition, { id: "karma-video", component: KarmaVideo_1.KarmaVideo, durationInFrames: 300, fps: 30, width: 1920, height: 1080, defaultProps: { video: DEFAULT_VIDEO }, calculateMetadata: KarmaVideo_1.karmaVideoCalculateMetadata }), (0, jsx_runtime_1.jsx)(remotion_1.Composition, { id: "karma-thumbnail", component: Thumbnail_1.Thumbnail, durationInFrames: 1, fps: 30, width: 1280, height: 720, defaultProps: { title: "Karma OS Explained", subtitle: "in 5 minutes", badges: ["API", "AI"], channelName: "Karma OS" }, calculateMetadata: ({ props }) => ({
+                width: typeof props.width === "number" ? props.width : 1280,
+                height: typeof props.height === "number" ? props.height : 720,
+            }) }), (0, jsx_runtime_1.jsx)(remotion_1.Composition, { id: "WidgetShowcase", component: WidgetShowcase_1.WidgetShowcase, durationInFrames: 150, fps: 30, width: 1920, height: 1080 })] }));
 exports.KarmaRoot = KarmaRoot;
 (0, remotion_1.registerRoot)(exports.KarmaRoot);

@@ -14,6 +14,8 @@ interface EndScreenProps {
   nextVideo?: { title: string; thumbnail?: string; videoId?: string };
   /** Second recommendation */
   secondVideo?: { title: string; thumbnail?: string; videoId?: string };
+  /** How long the end screen is on screen; drives the fade in/out. */
+  durationFrames?: number;
 }
 
 const END_SCREEN_DURATION = 180; // frames at 30fps = 6 seconds
@@ -25,9 +27,10 @@ export const EndScreen: React.FC<EndScreenProps> = ({
   avatar,
   nextVideo,
   secondVideo,
+  durationFrames = END_SCREEN_DURATION,
 }) => {
   const frame = useCurrentFrame();
-  const progress = frame / END_SCREEN_DURATION;
+  const progress = frame / Math.max(1, durationFrames);
   
   // Fade in over first 0.5s, stay, fade out last 0.5s
   const fadeIn = interpolate(progress, [0, 0.08], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });

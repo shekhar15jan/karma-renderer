@@ -27,7 +27,7 @@ RUN npm install --no-audit --no-fund
 # Download Remotion's Chrome Headless Shell into node_modules/.remotion.
 RUN npx remotion browser ensure
 
-COPY tsconfig.json ./
+COPY tsconfig.json tailwind.config.js postcss.config.js remotion.config.ts ./
 COPY src ./src
 RUN npx tsc -p tsconfig.json && cp -r src/styles dist/styles && npm prune --omit=dev --no-audit --no-fund
 

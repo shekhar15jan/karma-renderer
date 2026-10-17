@@ -21,6 +21,8 @@ const sceneSchema = zod_1.z.object({
     visualSpec: videoSpecSchema,
     /** Narration for this scene, as a base64 data URI (audio/mpeg preferred). */
     audio: dataUri.optional(),
+    /** Spoken narration text; used to auto-generate captions when `captions` is absent. */
+    narration: zod_1.z.string().optional(),
     /** Transition used to enter this scene; overrides the video-level default. */
     transition: zod_1.z.enum(["fade", "slide-left", "slide-right", "wipe-left", "wipe-right", "zoom"]).optional(),
     /** Audio markers for TTS emphasis and timing (ssml). */
@@ -61,6 +63,8 @@ exports.videoRequestSchema = zod_1.z.object({
     enableIntro: zod_1.z.boolean().default(true),
     introTitle: zod_1.z.string().optional(),
     introSubtitle: zod_1.z.string().optional(),
+    /** Channel name shown on the intro card and the end screen. */
+    channelName: zod_1.z.string().optional(),
     branding: zod_1.z
         .object({
         logo: zod_1.z.string().optional(),

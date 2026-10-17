@@ -43,6 +43,12 @@ import "prismjs/components/prism-typescript";
 import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-java";
 import "prismjs/components/prism-python";
+import "prismjs/components/prism-bash";
+import "prismjs/components/prism-json";
+import "prismjs/components/prism-yaml";
+import "prismjs/components/prism-go";
+import "prismjs/components/prism-sql";
+import "prismjs/components/prism-docker";
 
 interface SceneVisualProps {
   /** Deprecated Stack A fallback HTML (only used when `spec` is absent). */
@@ -266,10 +272,9 @@ const progressPct = anim.progress ? Math.min(100, (frame / Math.max(1, durationF
   const sceneDurationSec = durationFrames / fps;
   if (!dynamicTransform && sceneDurationSec > 5) {
     const zoomProgress = Math.min(1, frame / durationFrames);
-    const zoom = 1.0 + 0.08 * easeOutCubic(zoomProgress); // Subtle 8% zoom
-    const panX = -20 * easeOutCubic(zoomProgress); // Slight pan left
-    const panY = -10 * easeOutCubic(zoomProgress); // Slight pan up
-    dynamicTransform = `scale(${zoom}) translate(${panX}px, ${panY}px)`;
+    // Subtle 3% push-in; larger zooms or pans crop titles and cards at the frame edges.
+    const zoom = 1.0 + 0.03 * easeOutCubic(zoomProgress);
+    dynamicTransform = `scale(${zoom})`;
     transformOrigin = "center center";
   }
 
@@ -285,7 +290,7 @@ const progressPct = anim.progress ? Math.min(100, (frame / Math.max(1, durationF
           }}
         />
       ) : null}
-      <AbsoluteFill style={{ transform: finalTransform, transformOrigin, overflow: "hidden", transition: "transform 0.5s ease-out" }}>
+      <AbsoluteFill style={{ transform: finalTransform, transformOrigin, overflow: "hidden" }}>
         {spec ? (
           <KarmaComponentRenderer spec={spec} />
         ) : (

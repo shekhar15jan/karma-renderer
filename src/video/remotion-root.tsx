@@ -5,6 +5,7 @@ import React from "react";
 import { Composition, registerRoot } from "remotion";
 import { KarmaVideo, karmaVideoCalculateMetadata } from "./compositions/KarmaVideo";
 import { WidgetShowcase } from "./compositions/WidgetShowcase";
+import { Thumbnail } from "./compositions/Thumbnail";
 import type { ValidatedVideoRequest } from "./video-schema";
 
 import testSpec from './mock_specs/terminal_test.json';
@@ -37,6 +38,19 @@ export const KarmaRoot: React.FC = () => (
       height={1080}
       defaultProps={{ video: DEFAULT_VIDEO }}
       calculateMetadata={karmaVideoCalculateMetadata}
+    />
+    <Composition
+      id="karma-thumbnail"
+      component={Thumbnail}
+      durationInFrames={1}
+      fps={30}
+      width={1280}
+      height={720}
+      defaultProps={{ title: "Karma OS Explained", subtitle: "in 5 minutes", badges: ["API", "AI"], channelName: "Karma OS" }}
+      calculateMetadata={({ props }) => ({
+        width: typeof props.width === "number" ? props.width : 1280,
+        height: typeof props.height === "number" ? props.height : 720,
+      })}
     />
     <Composition
       id="WidgetShowcase"

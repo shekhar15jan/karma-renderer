@@ -29,7 +29,7 @@ export const IntroCard: React.FC<{ video: ValidatedVideoRequest; accent: string;
       }}
     >
       <div style={{ position: "absolute", top: 44, textAlign: "center", opacity: titleFade, transform: `translateY(${titleSlide}px)` }}>
-        <div style={{ color: "#f34b22", fontSize: 30, fontWeight: 900, letterSpacing: 6, textTransform: "uppercase" }}>KARMA OS</div>
+        <div style={{ color: "#f34b22", fontSize: 30, fontWeight: 900, letterSpacing: 6, textTransform: "uppercase" }}>{video.channelName ?? "KARMA OS"}</div>
       </div>
 
       <div style={{ textAlign: "center", transform: `translateY(${titleSlide}px)`, opacity: titleFade }}>

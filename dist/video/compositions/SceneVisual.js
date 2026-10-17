@@ -79,6 +79,12 @@ require("prismjs/components/prism-typescript");
 require("prismjs/components/prism-javascript");
 require("prismjs/components/prism-java");
 require("prismjs/components/prism-python");
+require("prismjs/components/prism-bash");
+require("prismjs/components/prism-json");
+require("prismjs/components/prism-yaml");
+require("prismjs/components/prism-go");
+require("prismjs/components/prism-sql");
+require("prismjs/components/prism-docker");
 const DEFAULT_ANIMATION = {
     entrance: "fade-up",
     stagger: 0.4,
@@ -270,17 +276,16 @@ const SceneVisual = ({ html, theme, durationFrames, fps, animation, entrance = t
     const sceneDurationSec = durationFrames / fps;
     if (!dynamicTransform && sceneDurationSec > 5) {
         const zoomProgress = Math.min(1, frame / durationFrames);
-        const zoom = 1.0 + 0.08 * easeOutCubic(zoomProgress); // Subtle 8% zoom
-        const panX = -20 * easeOutCubic(zoomProgress); // Slight pan left
-        const panY = -10 * easeOutCubic(zoomProgress); // Slight pan up
-        dynamicTransform = `scale(${zoom}) translate(${panX}px, ${panY}px)`;
+        // Subtle 3% push-in; larger zooms or pans crop titles and cards at the frame edges.
+        const zoom = 1.0 + 0.03 * easeOutCubic(zoomProgress);
+        dynamicTransform = `scale(${zoom})`;
         transformOrigin = "center center";
     }
     const finalTransform = dynamicTransform ? dynamicTransform : `scale(${zoom})`;
     return ((0, jsx_runtime_1.jsxs)(remotion_1.AbsoluteFill, { style: { background: theme.background, ...themeCssVars(theme) }, children: [theme.gridBg ? ((0, jsx_runtime_1.jsx)(remotion_1.AbsoluteFill, { style: {
                     backgroundImage: `radial-gradient(circle, ${theme.border}66 1px, transparent 1px)`,
                     backgroundSize: "36px 36px",
-                } })) : null, (0, jsx_runtime_1.jsx)(remotion_1.AbsoluteFill, { style: { transform: finalTransform, transformOrigin, overflow: "hidden", transition: "transform 0.5s ease-out" }, children: spec ? ((0, jsx_runtime_1.jsx)(KarmaComponentRenderer_1.KarmaComponentRenderer, { spec: spec })) : ((0, jsx_runtime_1.jsx)("div", { ref: rootRef, className: "scene-content", dangerouslySetInnerHTML: { __html: html ?? "" } })) }), progressPct !== null ? ((0, jsx_runtime_1.jsx)("div", { style: {
+                } })) : null, (0, jsx_runtime_1.jsx)(remotion_1.AbsoluteFill, { style: { transform: finalTransform, transformOrigin, overflow: "hidden" }, children: spec ? ((0, jsx_runtime_1.jsx)(KarmaComponentRenderer_1.KarmaComponentRenderer, { spec: spec })) : ((0, jsx_runtime_1.jsx)("div", { ref: rootRef, className: "scene-content", dangerouslySetInnerHTML: { __html: html ?? "" } })) }), progressPct !== null ? ((0, jsx_runtime_1.jsx)("div", { style: {
                     position: "absolute",
                     left: 0,
                     right: 0,

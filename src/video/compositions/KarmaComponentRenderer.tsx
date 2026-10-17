@@ -14,7 +14,8 @@ export const renderComponent = (c: any, index: number) => {
   }
 
   if (t === 'bullet-list') {
-    return <KarmaBulletList key={index} items={c.data?.items || []} animationDelay={delay + 5} />;
+    const items = (c.data?.items || c.items || []).map((it: any) => typeof it === 'string' ? it : (it?.label ?? ''));
+    return <KarmaBulletList key={index} items={items} animationDelay={delay + 5} />;
   }
 
   if (t === 'code') {
@@ -24,8 +25,8 @@ export const renderComponent = (c: any, index: number) => {
   if (t === 'card' || t.includes('-card')) {
     return (
       <KarmaCard key={index} animationDelay={delay} color={c.data?.tone || 'slate'}>
-        {c.label && <KarmaHeading text={c.label} level={4} animationDelay={delay} />}
-        {c.sublabel && <KarmaParagraph text={c.sublabel} className="mt-2 text-lg" animationDelay={delay + 2} />}
+        {c.label && <KarmaHeading text={c.label} level={2} animationDelay={delay} />}
+        {c.sublabel && <KarmaParagraph text={c.sublabel} className="mt-4" animationDelay={delay + 2} />}
         {c.data?.value && <div className="mt-4 text-5xl font-extrabold text-white">{c.data.value}</div>}
       </KarmaCard>
     );
@@ -104,7 +105,7 @@ export const renderComponent = (c: any, index: number) => {
     return <KarmaUmlPackageNode key={index} label={c.label || ''} animationDelay={delay} />;
   }
 
-  if (t === 'uml-database') {
+  if (t === 'uml-database' || t === 'database') {
     return <KarmaUmlDatabaseNode key={index} label={c.label || ''} animationDelay={delay} />;
   }
 
@@ -240,8 +241,8 @@ export const KarmaComponentRenderer: React.FC<{ spec: any, animationDelayOverrid
     const codeComponents = components.filter((c: any) => c.type === 'code');
     const explanationComponents = components.filter((c: any) => c.type !== 'code');
     return (
-      <div className="w-full h-full p-16 flex items-center justify-center z-10 relative bg-[#0d1117]">
-        <KarmaSplitLayout 
+      <div className="w-full h-full px-24 py-20 flex items-center justify-center z-10 relative bg-[#0d1117]">
+        <KarmaSplitLayout
           leftRatio={2} rightRatio={3}
           left={
             <div className="pr-12">
@@ -250,13 +251,8 @@ export const KarmaComponentRenderer: React.FC<{ spec: any, animationDelayOverrid
             </div>
           }
           right={
-            <div className="w-full shadow-2xl rounded-xl overflow-hidden border border-slate-700">
-              <div className="bg-[#161b22] px-4 py-3 flex items-center gap-2 border-b border-slate-700">
-                <div className="w-3 h-3 rounded-full bg-rose-500"></div><div className="w-3 h-3 rounded-full bg-amber-500"></div><div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-              </div>
-              <div className="bg-[#0d1117] p-8 h-[600px] overflow-auto">
-                {codeComponents.map((c: any, i: number) => renderComponent(c, i))}
-              </div>
+            <div className="w-full">
+              {codeComponents.map((c: any, i: number) => renderComponent(c, i))}
             </div>
           }
           className="w-full h-full max-w-[1600px]"
@@ -272,7 +268,7 @@ export const KarmaComponentRenderer: React.FC<{ spec: any, animationDelayOverrid
       type: (c.type === 'code' || c.type === 'command') ? 'command' : 'output' as any
     }));
     return (
-      <div className="w-full h-full p-16 flex flex-col justify-center items-center z-10 relative bg-black">
+      <div className="w-full h-full px-24 py-20 flex flex-col justify-center items-center z-10 relative bg-black">
         <KarmaSlideHeader title={spec.title} subtitle={spec.subtitle} className="w-full max-w-[1600px]" />
         <div className="w-full max-w-[1600px] flex-grow pb-12">
            <KarmaTerminalWindow commands={commands} />
@@ -290,7 +286,7 @@ export const KarmaComponentRenderer: React.FC<{ spec: any, animationDelayOverrid
        return { label: c.label || c.data?.body || 'Step', status: status as any };
     });
     return (
-      <div className="w-full h-full p-16 flex flex-col z-10 relative">
+      <div className="w-full h-full px-24 py-20 flex flex-col z-10 relative">
         <KarmaSlideHeader title={spec.title} subtitle={spec.subtitle} />
         <div className="flex-grow w-full flex items-center justify-center">
            <KarmaRoadmapTimeline steps={steps} className="w-full max-w-[1400px]" />
@@ -301,14 +297,14 @@ export const KarmaComponentRenderer: React.FC<{ spec: any, animationDelayOverrid
 
   // ALL OTHER STANDARD SLIDES (Require Header)
   return (
-    <div className="w-full h-full p-16 flex flex-col z-10 relative">
+    <div className="w-full h-full px-24 py-20 flex flex-col z-10 relative">
       <KarmaSlideHeader title={spec.title} subtitle={spec.subtitle} />
-      
+
       <div className="flex-grow w-full flex relative">
         
         {/* 3. standard-content */}
         {layout === 'standard-content' && (
-          <div className="w-full max-w-5xl flex flex-col gap-6">
+          <div className="w-full max-w-6xl flex flex-col justify-center gap-8">
             {components.map((c: any, i: number) => renderComponent(c, i))}
           </div>
         )}
@@ -347,8 +343,10 @@ export const KarmaComponentRenderer: React.FC<{ spec: any, animationDelayOverrid
 
         {/* 7. feature-grid */}
         {layout === 'feature-grid' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-[1600px] mx-auto auto-rows-fr">
-            {components.map((c: any, i: number) => renderComponent(c, i))}
+          <div className="w-full h-full flex items-center">
+            <div className={`grid ${components.length === 4 ? 'grid-cols-2' : components.length <= 2 ? 'grid-cols-2' : 'grid-cols-3'} gap-10 w-full max-w-[1600px] mx-auto items-start`}>
+              {components.map((c: any, i: number) => renderComponent(c, i))}
+            </div>
           </div>
         )}
 

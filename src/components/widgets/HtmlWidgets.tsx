@@ -1,5 +1,6 @@
 import React from 'react';
 import { interpolate, useCurrentFrame, spring } from 'remotion';
+import Prism from 'prismjs';
 
 // ==========================================
 // Karma UI Design System (Bootstrap-style)
@@ -41,7 +42,7 @@ export const KarmaHeading: React.FC<{ text: string, level?: 1 | 2 | 3 | 4, anima
 export const KarmaParagraph: React.FC<{ text: string, animationDelay?: number, className?: string }> = ({ text, animationDelay = 5, className = "" }) => {
   const { opacity } = useEntranceAnimation(animationDelay);
   return (
-    <p className={`text-xl lg:text-2xl text-slate-300 leading-relaxed font-medium tracking-wide ${className}`} style={{ opacity }}>
+    <p className={`text-3xl text-slate-300 leading-relaxed font-medium tracking-wide ${className}`} style={{ opacity }}>
       {text}
     </p>
   );
@@ -59,7 +60,7 @@ export const KarmaText: React.FC<{ text: string, variant?: 'muted' | 'accent' | 
 
 export const KarmaBulletList: React.FC<{ items: string[], animationDelay?: number, className?: string }> = ({ items, animationDelay = 5, className = "" }) => {
   return (
-    <ul className={`flex flex-col gap-4 text-xl lg:text-2xl text-slate-300 leading-relaxed font-medium tracking-wide ${className}`}>
+    <ul className={`flex flex-col gap-6 text-3xl text-slate-200 leading-relaxed font-medium tracking-wide ${className}`}>
       {items.map((item, idx) => {
         const { opacity, y } = useEntranceAnimation(animationDelay + (idx * 2));
         return (
@@ -108,11 +109,11 @@ export const KarmaGrid: React.FC<{ children: React.ReactNode, cols?: 1 | 2 | 3 |
 
 export const KarmaSplitLayout: React.FC<{ left: React.ReactNode, right: React.ReactNode, leftRatio?: 1 | 2 | 3 | 4, rightRatio?: 1 | 2 | 3 | 4, className?: string }> = ({ left, right, leftRatio = 1, rightRatio = 1, className = "" }) => {
   return (
-    <div className={`w-full flex flex-col lg:flex-row gap-12 items-center justify-between ${className}`}>
-      <div className={`flex flex-col gap-6 w-full lg:w-[${leftRatio * 20}%] flex-[${leftRatio}]`}>
+    <div className={`w-full flex flex-row gap-16 items-center justify-between ${className}`}>
+      <div className="flex flex-col gap-8 min-w-0" style={{ flex: `${leftRatio} 1 0%` }}>
         {left}
       </div>
-      <div className={`flex flex-col items-center justify-center w-full lg:w-[${rightRatio * 20}%] flex-[${rightRatio}]`}>
+      <div className="flex flex-col items-center justify-center gap-8 min-w-0" style={{ flex: `${rightRatio} 1 0%` }}>
         {right}
       </div>
     </div>
@@ -140,8 +141,8 @@ export const KarmaSlideHeader: React.FC<{ title?: string, subtitle?: string, ani
   if (!title && !subtitle) return null;
   return (
     <div className={`w-full pb-6 border-b-2 border-slate-700/50 mb-12 flex flex-col ${className}`} style={{ opacity, transform: `translateY(${y}px)` }}>
-      {title && <h2 className="text-4xl font-extrabold text-slate-100">{title}</h2>}
-      {subtitle && <p className="text-xl text-slate-400 mt-2 font-medium">{subtitle}</p>}
+      {title && <h2 className="text-6xl font-extrabold text-slate-50 tracking-tight">{title}</h2>}
+      {subtitle && <p className="text-3xl text-cyan-300/80 mt-4 font-semibold">{subtitle}</p>}
     </div>
   );
 };
@@ -271,12 +272,30 @@ export const KarmaCodeBlock: React.FC<{ code: string, language?: string, animati
         <div className="w-3.5 h-3.5 rounded-full bg-green-500"></div>
         <span className="ml-6 text-sm text-slate-400 font-mono tracking-wider uppercase">{language}</span>
       </div>
-      <pre className="p-8 text-lg font-mono text-emerald-300 overflow-hidden leading-relaxed">
-        <code>{code}</code>
+      <pre className="p-10 font-mono text-slate-100 overflow-hidden leading-relaxed whitespace-pre" style={{ fontSize: codeFontSize(code) }}>
+        <code dangerouslySetInnerHTML={{ __html: highlightCode(code, language) }} />
       </pre>
     </div>
   );
 };
+
+/** Shrinks the code font so the longest line fits a ~950px code pane (16-30px). */
+function codeFontSize(code: string): number {
+  const longest = code.split('\n').reduce((n, line) => Math.max(n, line.length), 0);
+  if (longest === 0) return 28;
+  return Math.max(16, Math.min(30, Math.floor(950 / (0.6 * longest))));
+}
+
+/** Prism-highlights code; unknown languages fall back to escaped plain text. */
+function highlightCode(code: string, language: string): string {
+  const lang = (language || '').toLowerCase();
+  const alias: Record<string, string> = { js: 'javascript', ts: 'typescript', tsx: 'typescript', jsx: 'javascript', py: 'python', sh: 'bash', shell: 'bash', yml: 'yaml', golang: 'go', dockerfile: 'docker' };
+  const grammar = Prism.languages[alias[lang] ?? lang];
+  if (grammar) {
+    return Prism.highlight(code, grammar, alias[lang] ?? lang);
+  }
+  return code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 // --- Diagrams ---
 

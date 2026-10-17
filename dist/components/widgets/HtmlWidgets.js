@@ -7,6 +7,7 @@ exports.KarmaConnector = exports.KarmaLanguageNode = exports.KarmaGcpNode = expo
 const jsx_runtime_1 = require("react/jsx-runtime");
 const react_1 = __importDefault(require("react"));
 const remotion_1 = require("remotion");
+const prismjs_1 = __importDefault(require("prismjs"));
 // ==========================================
 // Karma UI Design System (Bootstrap-style)
 // ==========================================
@@ -35,7 +36,7 @@ const KarmaHeading = ({ text, level = 1, animationDelay = 0, className = "" }) =
 exports.KarmaHeading = KarmaHeading;
 const KarmaParagraph = ({ text, animationDelay = 5, className = "" }) => {
     const { opacity } = useEntranceAnimation(animationDelay);
-    return ((0, jsx_runtime_1.jsx)("p", { className: `text-xl lg:text-2xl text-slate-300 leading-relaxed font-medium tracking-wide ${className}`, style: { opacity }, children: text }));
+    return ((0, jsx_runtime_1.jsx)("p", { className: `text-3xl text-slate-300 leading-relaxed font-medium tracking-wide ${className}`, style: { opacity }, children: text }));
 };
 exports.KarmaParagraph = KarmaParagraph;
 const KarmaText = ({ text, variant, className = "" }) => {
@@ -49,7 +50,7 @@ const KarmaText = ({ text, variant, className = "" }) => {
 };
 exports.KarmaText = KarmaText;
 const KarmaBulletList = ({ items, animationDelay = 5, className = "" }) => {
-    return ((0, jsx_runtime_1.jsx)("ul", { className: `flex flex-col gap-4 text-xl lg:text-2xl text-slate-300 leading-relaxed font-medium tracking-wide ${className}`, children: items.map((item, idx) => {
+    return ((0, jsx_runtime_1.jsx)("ul", { className: `flex flex-col gap-6 text-3xl text-slate-200 leading-relaxed font-medium tracking-wide ${className}`, children: items.map((item, idx) => {
             const { opacity, y } = useEntranceAnimation(animationDelay + (idx * 2));
             return ((0, jsx_runtime_1.jsxs)("li", { className: "flex items-start gap-4", style: { opacity, transform: `translateY(${y}px)` }, children: [(0, jsx_runtime_1.jsx)("span", { className: "text-indigo-500 font-bold mt-1", children: "\u2022" }), (0, jsx_runtime_1.jsx)("span", { children: item })] }, idx));
         }) }));
@@ -78,7 +79,7 @@ const KarmaGrid = ({ children, cols = 1, gap = "gap-8", className = "" }) => {
 };
 exports.KarmaGrid = KarmaGrid;
 const KarmaSplitLayout = ({ left, right, leftRatio = 1, rightRatio = 1, className = "" }) => {
-    return ((0, jsx_runtime_1.jsxs)("div", { className: `w-full flex flex-col lg:flex-row gap-12 items-center justify-between ${className}`, children: [(0, jsx_runtime_1.jsx)("div", { className: `flex flex-col gap-6 w-full lg:w-[${leftRatio * 20}%] flex-[${leftRatio}]`, children: left }), (0, jsx_runtime_1.jsx)("div", { className: `flex flex-col items-center justify-center w-full lg:w-[${rightRatio * 20}%] flex-[${rightRatio}]`, children: right })] }));
+    return ((0, jsx_runtime_1.jsxs)("div", { className: `w-full flex flex-row gap-16 items-center justify-between ${className}`, children: [(0, jsx_runtime_1.jsx)("div", { className: "flex flex-col gap-8 min-w-0", style: { flex: `${leftRatio} 1 0%` }, children: left }), (0, jsx_runtime_1.jsx)("div", { className: "flex flex-col items-center justify-center gap-8 min-w-0", style: { flex: `${rightRatio} 1 0%` }, children: right })] }));
 };
 exports.KarmaSplitLayout = KarmaSplitLayout;
 const KarmaArchitecturePipeline = ({ children, connectorStyle = 'solid', connectorArrows = 'end', className = "" }) => {
@@ -90,7 +91,7 @@ const KarmaSlideHeader = ({ title, subtitle, animationDelay = 0, className = "" 
     const { opacity, y } = useEntranceAnimation(animationDelay);
     if (!title && !subtitle)
         return null;
-    return ((0, jsx_runtime_1.jsxs)("div", { className: `w-full pb-6 border-b-2 border-slate-700/50 mb-12 flex flex-col ${className}`, style: { opacity, transform: `translateY(${y}px)` }, children: [title && (0, jsx_runtime_1.jsx)("h2", { className: "text-4xl font-extrabold text-slate-100", children: title }), subtitle && (0, jsx_runtime_1.jsx)("p", { className: "text-xl text-slate-400 mt-2 font-medium", children: subtitle })] }));
+    return ((0, jsx_runtime_1.jsxs)("div", { className: `w-full pb-6 border-b-2 border-slate-700/50 mb-12 flex flex-col ${className}`, style: { opacity, transform: `translateY(${y}px)` }, children: [title && (0, jsx_runtime_1.jsx)("h2", { className: "text-6xl font-extrabold text-slate-50 tracking-tight", children: title }), subtitle && (0, jsx_runtime_1.jsx)("p", { className: "text-3xl text-cyan-300/80 mt-4 font-semibold", children: subtitle })] }));
 };
 exports.KarmaSlideHeader = KarmaSlideHeader;
 const KarmaTerminalWindow = ({ commands, animationDelay = 0, className = "" }) => {
@@ -154,9 +155,26 @@ exports.KarmaBadge = KarmaBadge;
 // --- Code ---
 const KarmaCodeBlock = ({ code, language = "bash", animationDelay = 10, className = "" }) => {
     const { opacity, y } = useEntranceAnimation(animationDelay);
-    return ((0, jsx_runtime_1.jsxs)("div", { className: `rounded-2xl overflow-hidden shadow-2xl shadow-indigo-500/10 border border-slate-700 bg-[#1e1e1e]/95 backdrop-blur-md w-full flex flex-col ${className}`, style: { opacity, transform: `translateY(${y}px)` }, children: [(0, jsx_runtime_1.jsxs)("div", { className: "bg-slate-900 px-6 py-4 flex items-center space-x-3 border-b border-slate-700/80", children: [(0, jsx_runtime_1.jsx)("div", { className: "w-3.5 h-3.5 rounded-full bg-red-500" }), (0, jsx_runtime_1.jsx)("div", { className: "w-3.5 h-3.5 rounded-full bg-yellow-500" }), (0, jsx_runtime_1.jsx)("div", { className: "w-3.5 h-3.5 rounded-full bg-green-500" }), (0, jsx_runtime_1.jsx)("span", { className: "ml-6 text-sm text-slate-400 font-mono tracking-wider uppercase", children: language })] }), (0, jsx_runtime_1.jsx)("pre", { className: "p-8 text-lg font-mono text-emerald-300 overflow-hidden leading-relaxed", children: (0, jsx_runtime_1.jsx)("code", { children: code }) })] }));
+    return ((0, jsx_runtime_1.jsxs)("div", { className: `rounded-2xl overflow-hidden shadow-2xl shadow-indigo-500/10 border border-slate-700 bg-[#1e1e1e]/95 backdrop-blur-md w-full flex flex-col ${className}`, style: { opacity, transform: `translateY(${y}px)` }, children: [(0, jsx_runtime_1.jsxs)("div", { className: "bg-slate-900 px-6 py-4 flex items-center space-x-3 border-b border-slate-700/80", children: [(0, jsx_runtime_1.jsx)("div", { className: "w-3.5 h-3.5 rounded-full bg-red-500" }), (0, jsx_runtime_1.jsx)("div", { className: "w-3.5 h-3.5 rounded-full bg-yellow-500" }), (0, jsx_runtime_1.jsx)("div", { className: "w-3.5 h-3.5 rounded-full bg-green-500" }), (0, jsx_runtime_1.jsx)("span", { className: "ml-6 text-sm text-slate-400 font-mono tracking-wider uppercase", children: language })] }), (0, jsx_runtime_1.jsx)("pre", { className: "p-10 font-mono text-slate-100 overflow-hidden leading-relaxed whitespace-pre", style: { fontSize: codeFontSize(code) }, children: (0, jsx_runtime_1.jsx)("code", { dangerouslySetInnerHTML: { __html: highlightCode(code, language) } }) })] }));
 };
 exports.KarmaCodeBlock = KarmaCodeBlock;
+/** Shrinks the code font so the longest line fits a ~950px code pane (16-30px). */
+function codeFontSize(code) {
+    const longest = code.split('\n').reduce((n, line) => Math.max(n, line.length), 0);
+    if (longest === 0)
+        return 28;
+    return Math.max(16, Math.min(30, Math.floor(950 / (0.6 * longest))));
+}
+/** Prism-highlights code; unknown languages fall back to escaped plain text. */
+function highlightCode(code, language) {
+    const lang = (language || '').toLowerCase();
+    const alias = { js: 'javascript', ts: 'typescript', tsx: 'typescript', jsx: 'javascript', py: 'python', sh: 'bash', shell: 'bash', yml: 'yaml', golang: 'go', dockerfile: 'docker' };
+    const grammar = prismjs_1.default.languages[alias[lang] ?? lang];
+    if (grammar) {
+        return prismjs_1.default.highlight(code, grammar, alias[lang] ?? lang);
+    }
+    return code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 // --- Diagrams ---
 const KarmaFlowDiagram = ({ nodes, animationDelay = 10, className = "" }) => {
     const { opacity, y } = useEntranceAnimation(animationDelay);

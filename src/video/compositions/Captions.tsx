@@ -71,7 +71,7 @@ function wrapText(text: string, maxChars: number): string {
     }
   }
   if (current) lines.push(current.trim());
-  return lines.join("<br/>");
+  return lines.join("\n");
 }
 
 export const Captions: React.FC<CaptionsProps> = ({
@@ -109,9 +109,10 @@ export const Captions: React.FC<CaptionsProps> = ({
       <div
         style={{
           display: "flex",
+          height: "100%",
           justifyContent: "center",
           alignItems: "flex-end",
-          paddingBottom: height * (1 - position) + 40,
+          paddingBottom: height * (1 - position),
           pointerEvents: "none",
         }}
       >
@@ -124,11 +125,12 @@ export const Captions: React.FC<CaptionsProps> = ({
             textAlign: "center",
             opacity,
             transform: `translateY(${opacity < 1 ? (1 - opacity) * 20 : 0}px)`,
-            transition: "opacity 0.1s ease-out, transform 0.1s ease-out",
             whiteSpace: "pre-line",
+            zIndex: 20,
           }}
-          dangerouslySetInnerHTML={{ __html: wrapped }}
-        />
+        >
+          {wrapped}
+        </div>
       </div>
     </AbsoluteFill>
   );
