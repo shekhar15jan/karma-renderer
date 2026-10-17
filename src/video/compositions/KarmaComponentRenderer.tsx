@@ -60,6 +60,23 @@ export function normalizeVideoLayout(layout: string | undefined): string {
   return 'standard-content';
 }
 
+type ToneColor = 'slate' | 'indigo' | 'emerald' | 'rose' | 'amber';
+const TONE_COLORS: Record<string, ToneColor> = {
+  slate: 'slate', indigo: 'indigo', emerald: 'emerald', rose: 'rose', amber: 'amber',
+  neutral: 'slate', muted: 'slate', default: 'slate',
+  primary: 'indigo', info: 'indigo', accent: 'indigo',
+  success: 'emerald', ok: 'emerald', positive: 'emerald',
+  danger: 'rose', error: 'rose', critical: 'rose', negative: 'rose',
+  warning: 'amber', caution: 'amber',
+};
+
+/** Scripts write tones by meaning ("danger", "success"); the widgets only know colour names,
+ *  so every tone a script used rendered uncoloured: a "504 Gateway Timeout" danger badge came
+ *  out as a blank, near-invisible bar. */
+function toneColor(tone: unknown): ToneColor | undefined {
+  return typeof tone === 'string' ? TONE_COLORS[tone.trim().toLowerCase()] : undefined;
+}
+
 /** Renders one spec component to its widget. Wrapped below by the exported
  *  `renderComponent` so every call site (including the recursive ones inside this
  *  function) gets a `data-eid` hook for scripted highlights, at no layout cost. */
@@ -135,7 +152,7 @@ const renderComponentRaw = (c: any, index: number): React.ReactElement | null =>
     const isWarning = kind === 'warning';
     const isStat = kind === 'stat';
     const isQuote = kind === 'quote';
-    const color = (c.data?.tone as any) || (isWarning ? 'amber' : isStat ? 'indigo' : isQuote ? 'emerald' : 'slate');
+    const color = toneColor(c.data?.tone) ?? (isWarning ? 'amber' : isStat ? 'indigo' : isQuote ? 'emerald' : 'slate');
     return (
       <KarmaCard key={index} animationDelay={delay} color={color} className="w-full h-full">
         <div className="flex items-start gap-3 w-full">
@@ -229,7 +246,8 @@ const renderComponentRaw = (c: any, index: number): React.ReactElement | null =>
   }
 
   if (t === 'badge') {
-    return <KarmaBadge key={index} text={c.label || ''} color={c.data?.tone || 'slate'} />;
+    // self-start: in a column a badge otherwise stretches into a full-width empty bar.
+    return <KarmaBadge key={index} text={c.label || ''} color={toneColor(c.data?.tone) ?? 'slate'} className="self-start" />;
   }
 
   if (t === 'uml-class-node') {
