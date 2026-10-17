@@ -4,7 +4,7 @@
  */
 
 import React, { useLayoutEffect, useMemo, useRef } from "react";
-import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
+import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import type { Theme } from "../../theme/themes";
 import type { SceneAnimation } from "../../core/types";
 import { KarmaComponentRenderer } from "./KarmaComponentRenderer";
@@ -101,6 +101,20 @@ function revealPacing(spec: any, durationFrames: number): number {
 
 /** Largest zoom an AI-authored timeline event may apply; more pushes content past the safe margins. */
 const MAX_AI_ZOOM = 1.08;
+/** Frame padding (px) the content sits inside; a camera push-in must not move it past the edge. */
+const CAMERA_SAFE_PADDING = 80;
+
+/** Anchor for a push-in of `scale` toward (x, y), pulled toward the centre just enough that
+ *  content inside the frame padding stays visible. Anchoring on the target itself (a card on
+ *  the right) pushed the far side out by up to 8% of the width, cutting off frame-filling content. */
+function safeZoomOrigin(x: number, y: number, scale: number, width: number, height: number): string {
+  const reach = scale > 1 ? CAMERA_SAFE_PADDING / (scale - 1) : Infinity;
+  const maxDx = Math.max(0, reach - width / 2);
+  const maxDy = Math.max(0, reach - height / 2);
+  const ox = width / 2 + Math.max(-maxDx, Math.min(maxDx, x - width / 2));
+  const oy = height / 2 + Math.max(-maxDy, Math.min(maxDy, y - height / 2));
+  return `${ox.toFixed(1)}px ${oy.toFixed(1)}px`;
+}
 
 function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3);
@@ -142,6 +156,7 @@ function buildSceneDomCache(root: HTMLElement, html: string, highlightIds: strin
 
 export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationFrames, fps, animation, entrance = true, sceneMotion = "animated", timelineEvents, spec, backgroundPattern, camera, bottomSafeArea = 0 }) => {
   const frame = useCurrentFrame();
+  const { width: videoWidth, height: videoHeight } = useVideoConfig();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const fillRef = useRef<HTMLDivElement | null>(null);
   const cacheRef = useRef<SceneDomCache | null>(null);
@@ -376,7 +391,7 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
                        rootRef.current.querySelector<HTMLElement>(`[data-eid="${evt.target_element_id}"]`);
              if (el) {
                 const rect = el.getBoundingClientRect();
-                transformOrigin = `${rect.left + rect.width/2}px ${rect.top + rect.height/2}px`;
+                transformOrigin = safeZoomOrigin(rect.left + rect.width / 2, rect.top + rect.height / 2, target, videoWidth, videoHeight);
              }
            }
         } else if (evt.action === "pan_right") {

@@ -41,7 +41,9 @@ function contentExtent(box: HTMLElement): { bottom: number; right: number } {
   let bottom = 0;
   let right = 0;
   const walk = (el: HTMLElement) => {
-    for (const child of Array.from(el.children) as HTMLElement[]) {
+    for (const child of Array.from(el.children)) {
+      // SVG icons have no offset* box; their NaN made every scene with one read as fitting.
+      if (!(child instanceof HTMLElement)) continue;
       let top = 0;
       let left = 0;
       for (let e: HTMLElement | null = child; e && e !== box; e = e.offsetParent as HTMLElement | null) {
