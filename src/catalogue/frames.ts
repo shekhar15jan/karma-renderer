@@ -14,7 +14,9 @@ export const FRAMES: FrameDef[] = [
     intent: ["HOOK"], fallback: "standard-content", motion: ["reveal", "zoom"],
     use: "Opening frame only. The frame title carries the message; components are supporting at most.",
     slots: [
-      { id: "support", label: "supporting", accepts: ["prose", "metric", "callout"], min: 0, max: 2, droppable: true },
+      // An opening carries the problem itself (an error badge, a failing server card, the tool's
+      // logo); at two prose/metric/callout items those were dropped or forced the plain column.
+      { id: "support", label: "supporting", accepts: ["prose", "metric", "callout", "entity"], min: 0, max: 4, droppable: true },
     ] },
 
   { id: "section-header", title: "Section header", family: "hero", status: "live", kind: "builtin",
