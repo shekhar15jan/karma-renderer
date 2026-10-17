@@ -1,4 +1,5 @@
 import React from 'react';
+import { LABEL_TECH_NODE_TYPES, techFromLabel } from "../../icons/techLabel";
 import type { Theme } from '../../theme/themes';
 import { TechTile, KarmaTechNode, KarmaTechStack, lookupTechIcon } from '../../components/widgets/TechIcon';
 import { assignWithFallback, type SceneComponent } from '../../catalogue/assign';
@@ -57,28 +58,6 @@ export function normalizeVideoLayout(layout: string | undefined): string {
   const kebab = raw.replace(/_/g, '-');
   if ((VIDEO_LAYOUTS as readonly string[]).includes(kebab)) return kebab;
   return 'standard-content';
-}
-
-/** Diagram node types whose label may name a real technology worth showing as its logo. */
-const LABEL_TECH_NODE_TYPES = new Set([
-  'docker-node', 'microservice-node', 'api-gateway', 'database', 'uml-database', 'message-queue',
-  'kubernetes-node', 'logging-node', 'language-node', 'flow-process', 'uml-component', 'uml-cloud',
-]);
-/** Words too ambiguous to imply a technology on their own ("PID Namespace node"). */
-const AMBIGUOUS_TECH_WORDS = new Set(['node', 'idea', 'spark', 'vault', 'helm', 'envoy', 'argo', 'consul', 'kong']);
-
-/** First technology named in a label: two-word names first ("Spring Boot"), then single words. */
-function techFromLabel(label?: string): string | null {
-  if (!label) return null;
-  const words = label.toLowerCase().split(/[^a-z0-9.+#-]+/).filter(Boolean);
-  for (let i = 0; i + 1 < words.length; i++) {
-    const pair = `${words[i]} ${words[i + 1]}`;
-    if (lookupTechIcon(pair)) return pair;
-  }
-  for (const w of words) {
-    if (w.length >= 4 && !AMBIGUOUS_TECH_WORDS.has(w) && lookupTechIcon(w)) return w;
-  }
-  return null;
 }
 
 /** Renders one spec component to its widget. Wrapped below by the exported

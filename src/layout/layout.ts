@@ -3,6 +3,7 @@
  *  Content layouts (grid/columns/cards/bento/timeline/roadmap/dashboard) use CSS via React.
  */
 
+import { renderedTech } from "../icons/techLabel";
 import ELK from "elkjs";
 import type { VisualComponent, VisualConnection, VisualContainer, LayoutType } from "../core/types";
 
@@ -87,6 +88,13 @@ const FIXED_NODE_SIZES: Record<string, { width: number; height: number }> = {
 
 /** Sizing heuristics for un-sized nodes. */
 export function estimateNodeSize(c: VisualComponent): { width: number; height: number } {
+  // Nodes that render as a logo + label row (KarmaTechNode) are as wide as their label; the
+  // per-type fixed sizes (e.g. 160px for docker-node) made ELK pack them too tightly, so edge
+  // labels overlapped the nodes and wide rows overflowed the frame.
+  if (renderedTech(c as any)) {
+    const chars = (c.label ?? "").length;
+    return { width: Math.round(Math.min(380, Math.max(160, 96 + chars * 9.5))), height: 64 };
+  }
   const fixed = c.type ? FIXED_NODE_SIZES[c.type] : undefined;
   if (fixed) return fixed;
   const icon = c.icon ? 40 : 0;

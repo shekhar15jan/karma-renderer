@@ -205,7 +205,9 @@ export const KarmaGraphScene: React.FC<GraphSceneProps> = ({ spec, theme }) => {
     const el = wrapRef.current;
     if (!el) return;
     const update = () => {
-      const rect = el.getBoundingClientRect();
+      // Layout size, not getBoundingClientRect(): the latter includes ancestor transforms
+      // (camera zoom, overflow fit), which fed back into the layout and shrank it every frame.
+      const rect = { width: el.clientWidth, height: el.clientHeight };
       if (rect.width > 0 && rect.height > 0) {
         setBox((prev) =>
           prev && Math.abs(prev.width - rect.width) < 1 && Math.abs(prev.height - rect.height) < 1 ? prev : { width: rect.width, height: rect.height },
