@@ -137,7 +137,10 @@ export function renderArrow(input: ArrowRenderInput, markerIdBase: string, theme
     const connectorLength = Math.hypot(dx, dy);
     const CHAR_WIDTH = 8.2;
     const HALO_PADDING = 24;
-    const maxHaloWidth = Math.max(60, Math.min(260, connectorLength * 0.85));
+    // Short vertical connectors in top-down diagrams still have the full gap between sibling
+    // nodes (~250px) for a horizontal label; budgeting by connector length alone cut ordinary
+    // labels like "isolates process tree" down to "isol…".
+    const maxHaloWidth = Math.max(220, Math.min(260, connectorLength * 0.85));
     const maxChars = Math.max(3, Math.floor((maxHaloWidth - HALO_PADDING) / CHAR_WIDTH));
     const raw = input.label.trim();
     const label = raw.length > maxChars ? raw.slice(0, Math.max(1, maxChars - 1)) + "…" : raw;

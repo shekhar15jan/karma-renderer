@@ -149,6 +149,29 @@ function buildArrowLayer(input: GraphSceneInput, laid: GraphLayoutResult, theme:
   return arrows;
 }
 
+/** Space kept around the fitted diagram inside the graph area (px). */
+const FIT_MARGIN = 40;
+/** Room for edge labels, which are drawn around edge midpoints outside node boxes (px). */
+const EDGE_LABEL_ALLOWANCE = 30;
+
+/** Bounding box of everything drawn: nodes, containers and edge routes (with label room). */
+function contentBounds(laid: GraphLayoutResult): { minX: number; minY: number; maxX: number; maxY: number } {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const add = (x1: number, y1: number, x2: number, y2: number) => {
+    minX = Math.min(minX, x1); minY = Math.min(minY, y1);
+    maxX = Math.max(maxX, x2); maxY = Math.max(maxY, y2);
+  };
+  for (const n of laid.nodes) add(n.x, n.y, n.x + n.width, n.y + n.height);
+  for (const c of laid.containers) add(c.x, c.y, c.x + c.width, c.y + c.height);
+  for (const e of laid.edges) {
+    for (const p of e.points) {
+      add(p.x - EDGE_LABEL_ALLOWANCE, p.y - EDGE_LABEL_ALLOWANCE, p.x + EDGE_LABEL_ALLOWANCE, p.y + EDGE_LABEL_ALLOWANCE);
+    }
+  }
+  if (!isFinite(minX)) return { minX: 0, minY: 0, maxX: laid.width, maxY: laid.height };
+  return { minX, minY, maxX, maxY };
+}
+
 export const KarmaGraphScene: React.FC<GraphSceneProps> = ({ spec, theme }) => {
   const activeTheme = theme ?? getTheme(spec.theme);
   const input = useMemo(() => buildGraphInput(spec), [spec]);
@@ -252,13 +275,19 @@ export const KarmaGraphScene: React.FC<GraphSceneProps> = ({ spec, theme }) => {
   const MAX_GRAPH_SCALE = 1.8;
   const fit = laid && box
     ? (() => {
-        const graphW = Math.max(1, laid.width);
-        const graphH = Math.max(1, laid.height);
-        const scale = Math.min(box.width / graphW, box.height / graphH, MAX_GRAPH_SCALE);
+        // layoutGraph() reports the canvas size (== box) and centres the nodes inside it, so
+        // fitting laid.width/height always gave scale ~1 and diagrams stayed at their small
+        // natural size in a mostly empty frame. Fit the actual content bounds instead.
+        const b = contentBounds(laid);
+        const graphW = Math.max(1, b.maxX - b.minX);
+        const graphH = Math.max(1, b.maxY - b.minY);
+        const availW = Math.max(1, box.width - 2 * FIT_MARGIN);
+        const availH = Math.max(1, box.height - 2 * FIT_MARGIN);
+        const scale = Math.min(availW / graphW, availH / graphH, MAX_GRAPH_SCALE);
         return {
           scale,
-          offsetX: (box.width - graphW * scale) / 2,
-          offsetY: (box.height - graphH * scale) / 2,
+          offsetX: (box.width - graphW * scale) / 2 - b.minX * scale,
+          offsetY: (box.height - graphH * scale) / 2 - b.minY * scale,
         };
       })()
     : null;

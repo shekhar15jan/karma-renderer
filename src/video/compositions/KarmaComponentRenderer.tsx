@@ -458,7 +458,7 @@ const KarmaComponentRendererInner: React.FC<{ spec: any, animationDelayOverride?
   if ((spec as any).schemaVersion === 'v2' && ((spec as any).semanticObjects || (spec as any).semanticAnimations || (spec as any).visualIntent)) {
     const { KarmaV2Scene } = require("./KarmaV2Scene");
     return (
-      <div className="w-full h-full flex flex-col z-10 relative">
+      <div className="w-full h-full flex flex-col z-10 relative px-24 pt-16 pb-12">
         <KarmaSlideHeader title={spec.title} subtitle={spec.subtitle} />
         <div className="flex-grow w-full relative min-h-0 overflow-hidden">
           <KarmaV2Scene spec={spec as any} />
@@ -510,7 +510,7 @@ const KarmaComponentRendererInner: React.FC<{ spec: any, animationDelayOverride?
     if (isSimulation && hasKafka) {
       const { KafkaSimulation } = require("../simulations/KafkaSimulation");
       return (
-        <div className="w-full h-full flex flex-col z-10 relative">
+        <div className="w-full h-full flex flex-col z-10 relative px-24 pt-16 pb-12">
           <KarmaSlideHeader title={spec.title} subtitle={spec.subtitle} />
           <div className="flex-grow w-full flex items-center justify-center p-8">
             <KafkaSimulation />
@@ -522,7 +522,7 @@ const KarmaComponentRendererInner: React.FC<{ spec: any, animationDelayOverride?
     if ((spec as any).schemaVersion === 'v2' || (spec as any).semanticObjects || (spec as any).semanticAnimations || (spec as any).camera || (spec as any).visualIntent) {
       const { KarmaV2Scene } = require("./KarmaV2Scene");
       return (
-        <div className="w-full h-full flex flex-col z-10 relative">
+        <div className="w-full h-full flex flex-col z-10 relative px-24 pt-16 pb-12">
           <KarmaSlideHeader title={spec.title} subtitle={spec.subtitle} />
           <div className="flex-grow w-full relative min-h-0 overflow-hidden">
             <KarmaV2Scene spec={spec as any} />
@@ -531,7 +531,7 @@ const KarmaComponentRendererInner: React.FC<{ spec: any, animationDelayOverride?
       );
     }
     return (
-      <div className="w-full h-full flex flex-col z-10 relative">
+      <div className="w-full h-full flex flex-col z-10 relative px-24 pt-16 pb-12">
         <KarmaSlideHeader title={spec.title} subtitle={spec.subtitle} />
         <div className="flex-grow w-full relative min-h-0 overflow-hidden">
           <KarmaGraphScene spec={spec} theme={theme} />

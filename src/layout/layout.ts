@@ -192,6 +192,8 @@ export async function layoutGraph(
   }
 
   const algorithm = mode === "layered" ? "layered" : mode === "box" ? "box" : "stress";
+  // Labelled edges need room between layers for the label box to sit clear of both nodes.
+  const hasEdgeLabels = connections.some((e) => (e.label ?? "").trim().length > 0);
   const graph = {
     id: "root",
     layoutOptions: {
@@ -199,7 +201,7 @@ export async function layoutGraph(
       "elk.direction": direction,
       "elk.spacing.nodeNode": "48",
       "elk.spacing.componentComponent": "60",
-      "elk.layered.spacing.nodeNodeBetweenLayers": "70",
+      "elk.layered.spacing.nodeNodeBetweenLayers": hasEdgeLabels ? "110" : "70",
       "elk.layered.spacing.edgeNodeBetweenLayers": "40",
       "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
       "elk.edgeRouting": "ORTHOGONAL",

@@ -69,6 +69,8 @@ interface SceneVisualProps {
   backgroundPattern?: "grid" | "dots" | "plain";
   timelineEvents?: { timestamp_ms: number; action: string; target_element_id?: string; zoom_start?: number; zoom_end?: number; duration_ms?: number; transform_origin?: string; pan_x_start?: number; pan_x_end?: number; pan_y_start?: number; pan_y_end?: number }[];
   spec?: any;
+  /** Pixels kept clear at the bottom for burned-in captions, so they never cover content. */
+  bottomSafeArea?: number;
   /** Semantic camera intent (Slice 6) — drives viewport transform via cameraEngine. */
   camera?: CameraIntent;
 }
@@ -119,7 +121,7 @@ function buildSceneDomCache(root: HTMLElement, html: string, highlightIds: strin
   };
 }
 
-export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationFrames, fps, animation, entrance = true, sceneMotion = "animated", timelineEvents, spec, backgroundPattern, camera }) => {
+export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationFrames, fps, animation, entrance = true, sceneMotion = "animated", timelineEvents, spec, backgroundPattern, camera, bottomSafeArea = 0 }) => {
   const frame = useCurrentFrame();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const fillRef = useRef<HTMLDivElement | null>(null);
@@ -420,7 +422,7 @@ export const SceneVisual: React.FC<SceneVisualProps> = ({ html, theme, durationF
       ) : null}
       <AbsoluteFill ref={fillRef} style={{ transform: finalTransform, transformOrigin: staticMode ? "center center" : transformOrigin, overflow: "hidden", transition: staticMode ? "none" : "transform 0.5s ease-out" }}>
         {spec ? (
-          <div ref={rootRef} className="scene-content" style={{ width: "100%", height: "100%" }}>
+          <div ref={rootRef} className="scene-content" style={{ width: "100%", height: bottomSafeArea ? `calc(100% - ${bottomSafeArea}px)` : "100%" }}>
             <KarmaComponentRenderer spec={spec} theme={theme} />
           </div>
         ) : (

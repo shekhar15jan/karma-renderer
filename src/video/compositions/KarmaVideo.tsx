@@ -62,7 +62,8 @@ const transitionStyle = (type: TransitionType | undefined, frame: number, transi
   }
 };
 
-const SceneBlock: React.FC<{ scene: PreparedScene; transition: number; isLast: boolean; theme: Theme; fps: number; defaultTransition: TransitionType; sceneMotion: "animated" | "static"; backgroundPattern: "grid" | "dots" | "plain" }> = ({
+const SceneBlock: React.FC<{ scene: PreparedScene; transition: number; isLast: boolean; theme: Theme; fps: number; defaultTransition: TransitionType; sceneMotion: "animated" | "static"; backgroundPattern: "grid" | "dots" | "plain"; bottomSafeArea?: number }> = ({
+  bottomSafeArea = 0,
   scene,
   transition,
   isLast,
@@ -90,6 +91,7 @@ const SceneBlock: React.FC<{ scene: PreparedScene; transition: number; isLast: b
           timelineEvents={scene.timelineEvents}
           sceneMotion={sceneMotion}
           backgroundPattern={backgroundPattern}
+          bottomSafeArea={bottomSafeArea}
         />
       </AbsoluteFill>
       {scene.audio ? <Audio src={scene.audio} /> : null}
@@ -163,6 +165,10 @@ export const KarmaVideo: React.FC<KarmaVideoProps> = ({ video, prepared }) => {
   }, [p.scenes]);
 
   const cues = allCues(p.scenes, p.fps);
+  // Height kept free under scene content for one caption line plus its bottom offset.
+  const captionSafeArea = p.captions
+    ? Math.round(p.height * (1 - p.captions.position) + p.captions.fontSize * 1.35 + 16)
+    : 0;
   
   // End screen starts after last scene + transition + padding
   const lastScene = p.scenes[p.scenes.length - 1];
@@ -179,7 +185,8 @@ export const KarmaVideo: React.FC<KarmaVideoProps> = ({ video, prepared }) => {
       ) : null}
       {p.scenes.map((s, i) => (
         <Sequence key={s.index} from={s.startFrame} durationInFrames={s.durationFrames + p.transition}>
-          <SceneBlock scene={s} transition={p.transition} isLast={i === p.scenes.length - 1} theme={theme} fps={p.fps} defaultTransition={video.transition} sceneMotion={p.sceneMotion} backgroundPattern={p.backgroundPattern} />
+          <SceneBlock scene={s} transition={p.transition} isLast={i === p.scenes.length - 1} theme={theme} fps={p.fps} defaultTransition={video.transition} sceneMotion={p.sceneMotion} backgroundPattern={p.backgroundPattern}
+            bottomSafeArea={p.captions?.burnIn && s.captions && s.captions.length > 0 ? captionSafeArea : 0} />
         </Sequence>
       ))}
       <Branding branding={p.scenes[0]?.spec?.branding ?? video.scenes[0]?.visualSpec?.branding} theme={theme} />

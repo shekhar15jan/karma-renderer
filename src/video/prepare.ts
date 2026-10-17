@@ -107,7 +107,11 @@ export function captionsFromNarration(narration: string, durationSeconds: number
       current = [];
     }
   }
-  if (current.length) phrases.push(current.join(" "));
+  if (current.length) {
+    // Never flash a one- or two-word caption ("points."): fold a short tail into the previous phrase.
+    if (current.length < 3 && phrases.length > 0) phrases[phrases.length - 1] += " " + current.join(" ");
+    else phrases.push(current.join(" "));
+  }
 
   const totalChars = phrases.reduce((n, p) => n + p.length, 0);
   const cues: CaptionCue[] = [];
